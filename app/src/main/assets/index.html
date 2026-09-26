@@ -1,0 +1,5743 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAXCAD – Outdoor CAD</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,sans-serif;background:#e9e9e9}
+.app{height:100vh;display:flex;flex-direction:column}
+.top{height:52px;background:#211f20;color:#fff;display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:3px solid #f58220}
+.top button{height:36px;padding:0 13px;border:1px solid #555;border-radius:3px;background:#2d2b2c;color:#fff;cursor:pointer}
+.top button.active{background:#f58220;border-color:#f58220;color:#211f20}
+.brand{display:flex;align-items:center;gap:7px;margin-right:10px}
+.brandLogo{width:48px;height:30px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:3px;border:1px solid #211f20}
+.brandLogo img{width:100%;height:100%;object-fit:cover;display:block}
+.title{font-weight:900;margin-right:4px;letter-spacing:1.4px;font-size:18px}
+.main{flex:1;min-height:0;display:flex}
+.left{width:48px;background:#211f20;display:flex;flex-direction:column;gap:6px;padding:7px}
+.left button{width:34px;height:34px;border:1px solid #555;background:#302e2f;color:#fff;border-radius:3px;cursor:pointer;font-size:17px}
+.left button.active{background:#f58220;color:#211f20;border-color:#f58220}
+.canvasWrap{position:relative;flex:1;min-width:0;background:#fff}
+canvas{display:block;width:100%;height:100%;cursor:crosshair}
+.right{width:225px;background:#fff;border-left:2px solid #211f20;padding:10px;overflow:auto}
+.section{border-bottom:1px solid #ddd;padding-bottom:10px;margin-bottom:10px}
+h3{font-size:15px;margin:0 0 10px;color:#211f20}
+.sectionTitle{font-weight:800;font-size:12px;margin-bottom:7px;color:#211f20;border-left:3px solid #f58220;padding-left:6px}
+.help{font-size:11px;line-height:1.45;color:#666}
+.field{margin-bottom:8px}
+label{display:block;font-size:11px;color:#666;margin-bottom:3px}
+input{width:100%;height:32px;border:1px solid #bbb;border-radius:3px;padding:5px;background:#fff}
+input:focus{outline:2px solid rgba(245,130,32,.22);border-color:#f58220}
+.action{width:100%;height:31px;border:1px solid #aaa;background:#fff;border-radius:2px;cursor:pointer;margin-bottom:4px;color:#211f20;font-weight:600;font-size:11px}
+.primary{background:#f58220!important;color:#211f20!important;border-color:#f58220!important}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.blocks{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.block{height:50px;background:#fff;border:1px solid #211f20;color:#211f20;border-radius:2px;cursor:pointer;text-align:left;padding:5px}
+.block:hover{background:#fff5eb}
+.block b{display:block;font-size:12px}.block span{font-size:10px;color:#666}
+.verticalBlocks .block{
+ border-color:#211f20;
+ position:relative;
+ padding-left:31px;
+ min-height:55px;
+}
+.verticalBlocks .block::before{
+ content:"";
+ position:absolute;
+ left:9px;
+ top:8px;
+ width:14px;
+ height:36px;
+ border:2px solid #f58220;
+ background:rgba(245,130,32,.12);
+}
+.verticalBlocks .block b::after{content:"";}
+.bottom{height:27px;background:#211f20;color:#ddd;display:flex;align-items:center;gap:20px;padding:0 10px;font-size:11px}
+
+/* AutoCAD-like dynamic input — mobile length confirmation */
+#dynamicInput{display:none;position:fixed;z-index:2147483647;width:170px;padding:5px;background:#eee;border:1px solid #777;box-shadow:0 3px 10px rgba(0,0,0,.35);pointer-events:auto;touch-action:manipulation}
+#dynamicInput .dynRow{display:flex;align-items:center;gap:5px;height:32px}
+#dynamicInput input{height:30px;box-sizing:border-box;border:1px solid #999;border-radius:2px;padding:2px 6px;font-size:16px;background:#fff;width:92px}
+#dynamicInput .dynAngleDisplay{min-width:42px;font-size:14px;font-weight:700;color:#1769aa;text-align:center}
+#dynamicInput #dynOk{height:30px;min-width:43px;padding:0 7px;border:1px solid #777;background:#f5f5f5;color:#111;font-weight:700;font-size:13px}
+#dynamicInput .dynHint{font-size:9px;color:#666;padding:3px 2px 0;white-space:nowrap}
+.measureWarn{font-size:12px;font-weight:bold}
+@media(max-width:800px){#dynamicInput{width:170px;padding:4px}#dynamicInput input{font-size:16px;height:30px;width:92px}}
+body.autocad-mode #dynamicInput{background:#2b2d30;border-color:#777;color:#fff}
+body.autocad-mode #dynamicInput input{background:#202124 !important;color:#fff !important;border-color:#777 !important}
+body.autocad-mode #dynamicInput #dynOk{background:#202124;color:#fff;border-color:#777}
+body.autocad-mode #dynamicInput .dynAngleDisplay,body.autocad-mode #dynamicInput .dynHint{color:#fff}
+
+
+.zoomSliderWrap{
+  width:34px;display:flex;flex-direction:column;align-items:center;gap:3px;
+}
+#zoomSlider{
+  width:74px;height:16px;margin:25px 0 25px;transform:rotate(-90deg);
+  accent-color:#6f7b55;cursor:pointer;touch-action:manipulation;
+}
+#zoomScaleLabel{
+  position:absolute;margin-top:78px;font-size:8px;line-height:1;white-space:nowrap;color:#e9e5d8;
+  pointer-events:none;
+}
+
+@media(max-width:800px){
+  .right{display:none}
+  .app{height:100dvh}
+  .top{height:48px;min-height:48px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;padding:5px 6px;gap:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .top::-webkit-scrollbar{display:none}
+  .brand{flex:0 0 auto;margin-right:4px}
+  .brandLogo{width:42px;height:27px}
+  .title{font-size:16px}
+  .top button{flex:0 0 auto;height:38px;min-width:48px;padding:0 9px;font-size:11px;touch-action:manipulation}
+  .main{min-height:0}
+  .left{width:48px;min-width:48px;padding:6px 5px;gap:6px}
+  .left button{width:38px;height:38px;font-size:18px;touch-action:manipulation}
+  .canvasWrap{min-width:0;min-height:0;touch-action:none;overflow:hidden}
+  canvas{touch-action:none}
+  .bottom{height:30px;min-height:30px;font-size:10px;gap:10px;padding:0 7px;overflow:hidden;white-space:nowrap}
+  #status{overflow:hidden;text-overflow:ellipsis;min-width:0}
+  #coords{flex:0 0 auto}
+  #dynamicInput{width:170px;transform:translate(-50%,-8px);z-index:2147483647}
+  #dynamicInput input{font-size:14px;height:28px}
+  #dynLength{width:92px}#dynAngle{display:none}
+  .wallSchedule{max-width:calc(100vw - 70px);font-size:10px}
+}
+@media(max-width:480px){
+  .top button{font-size:10px;min-width:44px;padding:0 7px}
+  .brandLogo{width:38px;height:25px}.title{font-size:14px}
+  .left{width:44px;min-width:44px}.left button{width:34px;height:34px}
+  .bottom{font-size:9px}
+}
+
+/* MAXCAD OUTDOOR / ANGLER-HUNTER UI */
+:root{
+  --mx-dark:#17211d;
+  --mx-dark2:#243129;
+  --mx-olive:#536044;
+  --mx-olive2:#6f7b55;
+  --mx-earth:#8a7657;
+  --mx-sand:#d8cfbb;
+  --mx-paper:#f2efe7;
+  --mx-water:#486d72;
+  --mx-orange:#c56a2b;
+  --mx-line:#30362f;
+}
+
+body{
+  margin:0;
+  font-family:Arial,Helvetica,sans-serif;
+  background:var(--mx-dark);
+  color:#e9e5d8;
+}
+
+header{
+  background:linear-gradient(90deg,#111914 0%,#263229 55%,#1a241f 100%);
+  border-bottom:2px solid var(--mx-olive2);
+  box-shadow:0 2px 8px rgba(0,0,0,.35);
+}
+
+.title,.brand .title{
+  color:#e8e1cf !important;
+  letter-spacing:1.8px !important;
+  font-weight:900 !important;
+}
+
+.brandLogo{
+  border:1px solid #879071 !important;
+  box-shadow:0 1px 5px rgba(0,0,0,.4);
+}
+
+button{
+  font-family:inherit;
+}
+
+.topbar button,
+header button{
+  background:#2c382f !important;
+  border:1px solid #64705a !important;
+  color:#e9e5d8 !important;
+  border-radius:3px !important;
+}
+
+.topbar button:hover,
+header button:hover{
+  background:#536044 !important;
+}
+
+.right{
+  width:225px !important;
+  background:#202a24 !important;
+  color:#e6e0d2 !important;
+  border-left:1px solid #64705a !important;
+  padding:10px !important;
+}
+
+.section{
+  border-bottom:1px solid #465145 !important;
+}
+
+.sectionTitle{
+  color:#eee7d7 !important;
+  border-left:3px solid var(--mx-orange) !important;
+}
+
+.field label,
+.right label{
+  color:#bfc4b5 !important;
+}
+
+input{
+  background:#111914 !important;
+  color:#eee7d7 !important;
+  border:1px solid #5b6656 !important;
+  border-radius:3px !important;
+}
+
+.action{
+  background:#303c33 !important;
+  border:1px solid #65705c !important;
+  color:#eee7d7 !important;
+}
+
+.action:hover{
+  background:#536044 !important;
+}
+
+.action.primary{
+  background:#536044 !important;
+  border-color:#7c8966 !important;
+  color:#fff !important;
+}
+
+.block{
+  background:#2a342d !important;
+  border:1px solid #6b765f !important;
+  color:#e8e1d2 !important;
+}
+
+.block:hover{
+  background:#536044 !important;
+  border-color:#a0a985 !important;
+}
+
+.verticalBlocks .block{
+  background:#29342d !important;
+  border-color:#788467 !important;
+}
+
+.help{
+  color:#aeb5a8 !important;
+}
+
+/* Outdoor-style CAD canvas: warm paper/grid instead of corporate white. */
+#canvas,
+.canvas{
+  background-color:#e9e5d9 !important;
+}
+
+/* Scrollbars */
+.right::-webkit-scrollbar{width:9px}
+.right::-webkit-scrollbar-track{background:#17211d}
+.right::-webkit-scrollbar-thumb{background:#596551;border-radius:5px}
+
+
+
+.wallSchedule{
+  position:absolute;
+  left:18px;
+  top:14px;
+  z-index:8;
+  min-width:430px;
+  background:rgba(255,255,255,.97);
+  border:1px solid #bdbdbd;
+  box-shadow:0 1px 4px rgba(0,0,0,.10);
+  font-family:Arial,sans-serif;
+  font-size:11px;
+  color:#222;
+  pointer-events:auto;
+  user-select:none;
+}
+.wallScheduleTitle{
+  padding:5px 8px;
+  font-weight:700;
+  letter-spacing:.6px;
+  border-bottom:1px solid #bdbdbd;
+  background:#f3f3f3;
+}
+.wallScheduleHead,.wallDeleteBtn{
+  width:24px;
+  height:24px;
+  padding:0;
+  margin:0;
+  border:1px solid #777;
+  border-radius:3px;
+  background:#fff;
+  color:#222;
+  font-size:18px;
+  line-height:20px;
+  cursor:pointer;
+}
+.wallDeleteBtn:hover{
+  background:#222;
+  color:#fff;
+}
+.wallScheduleRow{
+  display:grid;
+  grid-template-columns:58px 105px 85px 95px 78px;
+  align-items:center;
+}
+.wallScheduleHead{
+  font-weight:700;
+  background:#fafafa;
+  border-bottom:1px solid #d6d6d6;
+}
+.wallScheduleHead span,.wallScheduleRow span{
+  padding:4px 6px;
+  border-right:1px solid #e0e0e0;
+}
+.wallScheduleRow{
+  border-bottom:1px solid #e5e5e5;
+}
+.wallScheduleRow:last-child{border-bottom:0}
+.wallScheduleRow .wallName{font-weight:700}
+.wallScheduleRow .num{text-align:right;font-variant-numeric:tabular-nums}
+.wallScheduleRow input{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid transparent;
+  background:transparent;
+  padding:3px 5px;
+  font:inherit;
+  color:#222;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.wallScheduleRow input:hover{
+  border-color:#c9c9c9;
+  background:#fff;
+}
+.wallScheduleRow input:focus{
+  outline:1px solid #1769aa;
+  border-color:#1769aa;
+  background:#fff;
+}
+.wallScheduleHint{
+  padding:4px 8px;
+  color:#777;
+  border-top:1px solid #e0e0e0;
+  font-size:10px;
+}
+
+/* Only hide the SEINAD window. No other functionality changed. */
+#wallSchedule{display:none !important;}
+
+/* Hide selected top toolbar commands without changing their functionality/code. */
+#saveBtn,
+#autocadStyleBtn,
+#undoBtn,
+#deleteBtn,
+#copyBtn,
+#saveMeasureBtn,
+#preset1715Btn{display:none !important;}
+</style>
+<style>
+#measureBtn.active{background:#1f6f9f !important;color:#fff !important}
+#saveMeasureBtn.active{background:#1f6f9f !important;color:#fff !important}
+#saveMeasureBtn:disabled{opacity:.45;cursor:not-allowed}
+#freezeDrawBtn{transition:background .12s,border-color .12s,color .12s}
+#freezeDrawBtn.active{background:#b3261e !important;border-color:#d94a42 !important;color:#fff !important}
+body.autocad-mode #freezeDrawBtn.active{background:#b3261e !important;border-color:#e05a52 !important;color:#fff !important}
+</style>
+<style id="compact-wall-schedule">
+.wallSchedule{
+  width:420px !important;
+  min-width:420px !important;
+  font-size:10px !important;
+  box-sizing:border-box !important;
+}
+.wallScheduleTitle{
+  padding:4px 7px !important;
+  height:24px !important;
+  box-sizing:border-box !important;
+  font-size:11px !important;
+}
+.wallScheduleHead,
+.wallScheduleRow{
+  display:grid !important;
+  grid-template-columns:58px 28px 88px 58px 78px 90px !important;
+  width:100% !important;
+  min-height:25px !important;
+  height:25px !important;
+  box-sizing:border-box !important;
+  align-items:center !important;
+}
+.wallScheduleHead{
+  padding:0 !important;
+  font-size:9px !important;
+  font-weight:700 !important;
+  background:#fafafa !important;
+}
+.wallScheduleHead span,
+.wallScheduleRow span{
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  padding:3px 5px !important;
+  overflow:hidden !important;
+  white-space:nowrap !important;
+  border-right:1px solid #e0e0e0 !important;
+}
+.wallScheduleRow{
+  padding:0 !important;
+  border-bottom:1px solid #e5e5e5 !important;
+}
+.wallScheduleRow .wallName{
+  font-weight:700 !important;
+}
+.wallScheduleRow .num{
+  text-align:right !important;
+  font-size:10px !important;
+  font-variant-numeric:tabular-nums !important;
+}
+.wallScheduleRow input{
+  width:100% !important;
+  height:21px !important;
+  min-height:21px !important;
+  box-sizing:border-box !important;
+  padding:1px 4px !important;
+  font-size:10px !important;
+  text-align:right !important;
+}
+.wallDeleteBtn{
+  width:22px !important;
+  height:22px !important;
+  font-size:15px !important;
+  line-height:18px !important;
+  padding:0 !important;
+}
+.wallScheduleHint{
+  height:24px !important;
+  box-sizing:border-box !important;
+  padding:4px 7px !important;
+  font-size:9px !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  color:#777 !important;
+}
+</style>
+
+<style id="autocad-style-toggle">
+/* AutoCAD-style visual mode. Geometry/interaction logic is unchanged. */
+body.autocad-mode{background:#202124;color:#fff}
+body.autocad-mode .top{background:#202124;color:#fff;border-bottom:2px solid #3a3d40}
+body.autocad-mode .top button{background:#2b2d30;border-color:#555;color:#fff}
+body.autocad-mode .top button:hover{background:#3a3d40}
+body.autocad-mode .top button.active{background:#3b3f43;color:#fff;border-color:#777}
+body.autocad-mode .left{background:#202124}
+body.autocad-mode .left button{background:#2b2d30;border-color:#555;color:#fff}
+body.autocad-mode .left button.active{background:#3b3f43;color:#fff;border-color:#777}
+body.autocad-mode .canvasWrap{background:#202124}
+body.autocad-mode .right{background:#252627 !important;color:#fff !important;border-left:1px solid #444 !important}
+body.autocad-mode h3,body.autocad-mode .sectionTitle{color:#fff !important}
+body.autocad-mode .field label,body.autocad-mode .right label{color:#d7d7d7 !important}
+body.autocad-mode input{background:#202124 !important;color:#fff !important;border-color:#666 !important}
+body.autocad-mode .action{background:#2b2d30 !important;color:#fff !important;border-color:#666 !important}
+body.autocad-mode .action.primary{background:#3b3f43 !important;color:#fff !important;border-color:#888 !important}
+body.autocad-mode .block{background:#2b2d30 !important;color:#fff !important;border-color:#777 !important}
+body.autocad-mode .block span{color:#ddd !important}
+body.autocad-mode .help{color:#ccc !important}
+body.autocad-mode .bottom{background:#202124;color:#fff}
+body.autocad-mode #dynamicInput{background:#2b2d30;border-color:#777;color:#fff}
+body.autocad-mode #dynamicInput input{background:#202124 !important;color:#fff !important;border-color:#777 !important}
+body.autocad-mode #dynamicInput .dynSep,body.autocad-mode #dynamicInput .dynHint{color:#fff}
+body.autocad-mode .wallSchedule{background:rgba(37,38,39,.96);border-color:#666;color:#fff}
+body.autocad-mode .wallScheduleTitle,body.autocad-mode .wallScheduleHead{background:#2b2d30;color:#fff;border-color:#555}
+body.autocad-mode .wallScheduleHead span,body.autocad-mode .wallScheduleRow span{border-color:#555}
+body.autocad-mode .wallScheduleRow{border-color:#444}
+body.autocad-mode .wallScheduleRow input{color:#fff;background:transparent}
+body.autocad-mode .wallScheduleHint{color:#ccc;border-color:#444}
+body.autocad-mode #autocadStyleBtn{background:#fff;color:#111;border-color:#fff}
+
+#pdfTools{position:absolute;right:10px;top:10px;z-index:45;display:none;align-items:center;gap:4px;padding:5px 7px;background:rgba(25,31,28,.94);color:#fff;border:1px solid #65705b;border-radius:4px;font:11px Arial,sans-serif;box-shadow:0 2px 7px rgba(0,0,0,.25)}
+#pdfTools button{height:25px;padding:0 7px;border:1px solid #69745f;background:#303a33;color:#fff;border-radius:3px;cursor:pointer;font-size:11px}
+#pdfTools button:hover{background:#536044}
+#pdfName{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:800px){#pdfTools{right:6px;top:6px;max-width:calc(100vw - 58px);overflow:hidden}#pdfName{max-width:95px}}
+
+.blockSchedule{position:absolute;right:12px;top:12px;z-index:8;min-width:300px;background:rgba(255,255,255,.96);border:1px solid #bbb;box-shadow:0 1px 5px rgba(0,0,0,.12);font:11px Arial,sans-serif;color:#222}.blockScheduleTitle{padding:5px 8px;font-weight:700;border-bottom:1px solid #bbb}.blockScheduleHead,.blockScheduleRow{display:grid;grid-template-columns:1fr 65px 55px 85px}.blockScheduleHead span,.blockScheduleRow span{padding:4px 6px;border-right:1px solid #ddd}.blockScheduleHead{font-weight:700;background:#fafafa;border-bottom:1px solid #ddd}.blockScheduleRow{border-bottom:1px solid #e5e5e5}.blockScheduleRow .num{text-align:right}.blockScheduleTotal{font-weight:700;background:#f5f5f5}@media(max-width:800px){.blockSchedule{right:6px;top:6px;min-width:270px;font-size:10px}.blockScheduleHead,.blockScheduleRow{grid-template-columns:1fr 55px 48px 72px}}
+
+.pdfShareModal{position:fixed;inset:0;z-index:30000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);font-family:Arial,sans-serif}
+.pdfShareModal.show{display:flex}
+.pdfShareCard{width:min(360px,calc(100vw - 32px));box-sizing:border-box;background:#fff;border:1px solid #222;border-radius:10px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.pdfShareTitle{font-size:18px;font-weight:700;margin-bottom:14px}
+.pdfShareCard label{display:block;font-size:12px;font-weight:700;margin-bottom:5px}
+#pdfShareName{width:100%;box-sizing:border-box;height:40px;border:1px solid #999;border-radius:6px;padding:0 10px;font-size:14px;margin-bottom:12px}
+.pdfShareActions{display:flex;flex-direction:column;gap:8px}
+.pdfShareActions button,.pdfShareCancel{height:40px;border:1px solid #222;border-radius:6px;background:#f3f3f3;font-weight:700;cursor:pointer}
+.pdfShareActions button:first-child{background:#222;color:#fff}
+.pdfShareCancel{width:100%;margin-top:10px;background:#fff}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";}</script>
+
+
+<style id="max-engineering-topmenu-only">
+/* TOP MENU VISUAL ONLY. Existing IDs, handlers and drawing logic are untouched. */
+.top{height:58px!important;min-height:58px!important;gap:6px!important;padding:4px 7px!important;overflow-x:auto!important;overflow-y:hidden!important;flex-wrap:nowrap!important;scrollbar-width:none!important;}
+.top::-webkit-scrollbar{display:none!important}
+.top .brand{flex:0 0 54px!important;width:54px!important;height:50px!important;margin:0 3px 0 0!important;display:flex!important;align-items:flex-start!important;justify-content:flex-start!important;}
+.top .brandLogo{width:38px!important;height:38px!important;margin:2px 0 0 1px!important;border-radius:7px!important;}
+.top .title{display:none!important}
+/* Only the functions actually used in the toolbar remain visible. */
+#preset1715Btn,#undoBtn,#autocadStyleBtn,#saveBtn{display:none!important}
+#connectLineBtn,#measureBtn,#saveMeasureBtn,#autoScaffoldBtn,#copyBtn,#deleteBtn,#clearBtn,#shareBtn,#pdfImportBtn,#lineBtn,#freezeDrawBtn{display:flex!important}
+.top>button{height:48px!important;min-height:48px!important;flex:0 0 86px!important;width:86px!important;min-width:86px!important;padding:3px 6px!important;border-radius:9px!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:1px!important;font-size:9px!important;line-height:11px!important;font-weight:700!important;white-space:nowrap!important;overflow:hidden!important;touch-action:manipulation!important;}
+#autoScaffoldBtn,#shareBtn,#pdfImportBtn{flex-basis:70px!important;width:70px!important;min-width:70px!important}
+.top>button::before{display:block!important;width:22px!important;height:22px!important;line-height:22px!important;flex:0 0 22px!important;margin:0!important;font-size:22px!important;}
+#copyBtn::before{content:'⧉'!important}.top>#deleteBtn::before{content:'⌫'!important}.top>#clearBtn::before{content:'✕'!important}.top>#shareBtn::before{content:'↑'!important}.top>#pdfImportBtn::before{content:'▣'!important}.top>#lineBtn::before{content:'✎'!important}.top>#freezeDrawBtn::before{content:'Ⅱ'!important}.top>#connectLineBtn::before{content:'⛓'!important}.top>#measureBtn::before{content:'📏'!important}.top>#saveMeasureBtn::before{content:'✓'!important}.top>#autoScaffoldBtn::before{content:'▦'!important}
+.top>button::after{display:none!important}
+#copyBtn::after{content:'KOPEERI'!important}.top>#deleteBtn::after{content:'KUSTUTA'!important}.top>#clearBtn::after{content:'PUHASTA'!important}.top>#shareBtn::after{content:'JAGA'!important}.top>#pdfImportBtn::after{content:'PDF'!important}.top>#lineBtn::after{content:'JOON'!important}.top>#freezeDrawBtn::after{content:'FREEZE'!important}.top>#connectLineBtn::after{content:'CONNECT'!important}.top>#measureBtn::after{content:'MÕÕDA'!important}.top>#saveMeasureBtn::after{content:'SALVESTA'!important}.top>#autoScaffoldBtn::after{content:'AUTO'!important}
+.top>button::after{display:block!important;width:100%!important;height:11px!important;line-height:11px!important;flex:0 0 11px!important;color:#e9e5d8!important;background:none!important;border:0!important;font-size:8px!important;font-weight:700!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;text-align:center!important;}
+@media(max-width:800px){.top{height:54px!important;min-height:54px!important;padding:3px 5px!important;gap:5px!important}.top .brand{flex-basis:48px!important;width:48px!important;height:48px!important}.top .brandLogo{width:34px!important;height:34px!important;margin-top:2px!important}.top>button{height:46px!important;min-height:46px!important;flex-basis:80px!important;width:80px!important;min-width:80px!important}.top>#autoScaffoldBtn,.top>#shareBtn,.top>#pdfImportBtn{flex-basis:64px!important;width:64px!important;min-width:64px!important}.top>button::before{width:20px!important;height:20px!important;flex-basis:20px!important;font-size:20px!important}.top>button::after{font-size:8px!important;height:10px!important;line-height:10px!important;flex-basis:10px!important}}
+</style>
+<style id="freeze-eraser-addon">
+#eraserBtn{position:relative;transition:background .12s,border-color .12s,color .12s;opacity:.38;cursor:not-allowed}
+#eraserBtn::before{content:"";display:block;width:22px;height:10px;border:2px solid currentColor;border-radius:2px;transform:rotate(-45deg);margin:auto}
+#eraserBtn.active{opacity:1;cursor:pointer;background:#168cff !important;border-color:#63b6ff !important;color:#fff !important}
+#eraserBtn:disabled{opacity:.38}
+body.eraser-mode #canvas{cursor:crosshair}
+@media (pointer:coarse) and (hover:none){
+  #eraserBtn{width:40px !important;min-width:40px !important;height:40px !important;min-height:40px !important;padding:0 !important;border-radius:7px !important}
+}
+</style>
+
+<style id="maxcad-mobile-clean-v2">
+/* =========================================================
+   MAXCAD MOBILE UI
+   One system for phone portrait AND phone landscape.
+   Desktop with mouse/trackpad is untouched.
+   ========================================================= */
+#maxcadMobileControls,
+#mobilePanelBackdrop{display:none}
+
+@media (pointer:coarse) and (hover:none) {
+  #maxcadMobileControls{
+    display:flex !important;
+    position:fixed !important;
+    right:10px !important;
+    bottom:58px !important;
+    z-index:50000 !important;
+    flex-direction:column !important;
+    gap:8px !important;
+    align-items:flex-end !important;
+  }
+  #maxcadMobileControls button{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:58px !important;
+    height:58px !important;
+    min-width:58px !important;
+    min-height:58px !important;
+    padding:0 !important;
+    border:1px solid rgba(150,170,145,.75) !important;
+    border-radius:7px !important;
+    background:#26352b !important;
+    color:#f2f2f2 !important;
+    box-shadow:0 3px 10px rgba(0,0,0,.35) !important;
+    font-size:14px !important;
+    font-weight:700 !important;
+    letter-spacing:.3px !important;
+    touch-action:manipulation !important;
+  }
+  #mobileJoystickToggle{font-size:22px !important}
+
+  /* MOBILE BLOCK MENU: keep all original sections in the DOM, but visually hide
+     non-block sections. Sections 2 and 3 remain compact and usable. */
+  .right .menu-hidden{
+    display:none !important;
+    visibility:hidden !important;
+    pointer-events:none !important;
+  }
+  .right .menu-block-section{
+    display:block !important;
+    margin:0 0 9px 0 !important;
+    padding:0 0 9px 0 !important;
+    border-bottom:1px solid rgba(145,160,145,.32) !important;
+  }
+  .right .menu-block-section:last-of-type{
+    margin-bottom:0 !important;
+    padding-bottom:0 !important;
+    border-bottom:0 !important;
+  }
+  .right .menu-block-section .sectionTitle{
+    margin:0 0 7px 0 !important;
+    padding:2px 0 2px 8px !important;
+    border-left:3px solid #f58220 !important;
+    color:#f1f1ec !important;
+    font-size:14px !important;
+    line-height:1.25 !important;
+  }
+  .right .menu-block-section .blocks{
+    gap:7px !important;
+  }
+  .right .menu-block-section .block{
+    min-height:58px !important;
+    padding:7px 8px !important;
+    border-radius:5px !important;
+    border:1px solid rgba(150,170,145,.72) !important;
+    background:#26352b !important;
+    box-shadow:none !important;
+  }
+  .right .menu-block-section .block b{
+    font-size:16px !important;
+    line-height:1.05 !important;
+  }
+  .right .menu-block-section .block span{
+    font-size:11px !important;
+    margin-top:3px !important;
+    color:#9da59e !important;
+  }
+
+  /* Right drawer: hidden until MENÜÜ is pressed. */
+  .right{
+    position:fixed !important;
+    top:calc(env(safe-area-inset-top) + 8px) !important;
+    right:max(8px, env(safe-area-inset-right)) !important;
+    bottom:auto !important;
+    width:min(305px, calc(100vw - 76px - env(safe-area-inset-right))) !important;
+    max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 92px) !important;
+    height:auto !important;
+    z-index:49000 !important;
+    display:block !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    padding:10px !important;
+    background:#17211d !important;
+    border:1px solid rgba(116,135,119,.65) !important;
+    border-radius:10px !important;
+    box-shadow:-6px 8px 24px rgba(0,0,0,.42) !important;
+    transform:translateX(110%) !important;
+    transition:transform .18s ease !important;
+    pointer-events:none !important;
+  }
+  .right.mobile-drawer-open,
+  .right.open,
+  body.mobile-menu-open .right{
+    transform:translateX(0) !important;
+    pointer-events:auto !important;
+  }
+
+  #mobilePanelBackdrop{
+    position:fixed !important;
+    inset:0 !important;
+    z-index:48000 !important;
+    background:rgba(0,0,0,.18) !important;
+    pointer-events:none !important;
+  }
+  body.mobile-menu-open #mobilePanelBackdrop{
+    display:block !important;
+    pointer-events:auto !important;
+  }
+
+  .app{
+    width:100vw !important;
+    height:100dvh !important;
+    min-height:100dvh !important;
+  }
+  .canvasWrap, canvas{
+    touch-action:none !important;
+  }
+
+  /* Remove accidental top spacer in landscape. */
+  .top{
+    margin-top:0 !important;
+  }
+}
+
+/* Desktop: mobile controls do not exist. */
+@media (pointer:fine){
+  #maxcadMobileControls,#mobilePanelBackdrop{display:none !important}
+}
+</style>
+<style id="maxcad-joystick-v3-style">
+@media (pointer:coarse) and (hover:none){
+  #mobileBlockJoystick{
+    display:none !important;
+    position:fixed !important;
+    right:70px !important;
+    bottom:70px !important;
+    width:250px !important;
+    height:115px !important;
+    z-index:49999 !important;
+    pointer-events:none !important;
+    background:transparent !important;
+  }
+  #mobileBlockJoystick.show{
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+  }
+
+  #mobileDpad{
+    position:absolute !important;
+    left:0 !important;
+    bottom:0 !important;
+    width:108px !important;
+    height:108px !important;
+    display:grid !important;
+    grid-template:36px 36px 36px / 36px 36px 36px !important;
+    pointer-events:auto !important;
+    background:transparent !important;
+  }
+  #mobileDpad button{
+    width:36px !important;
+    height:36px !important;
+    padding:0 !important;
+    border:1px solid rgba(70,165,245,.72) !important;
+    background:rgba(255,255,255,.025) !important;
+    color:rgba(85,175,255,.95) !important;
+    font-size:17px !important;
+    font-weight:700 !important;
+    border-radius:9px !important;
+    box-shadow:none !important;
+    touch-action:none !important;
+    pointer-events:auto !important;
+  }
+  #mobileDpad button[data-dir=up]{grid-column:2;grid-row:1}
+  #mobileDpad button[data-dir=left]{grid-column:1;grid-row:2}
+  #mobileDpad button[data-dir=right]{grid-column:3;grid-row:2}
+  #mobileDpad button[data-dir=down]{grid-column:2;grid-row:3}
+
+  #mobileRotatePad{
+    position:absolute !important;
+    right:0 !important;
+    bottom:8px !important;
+    width:92px !important;
+    height:92px !important;
+    border-radius:50% !important;
+    border:2px solid rgba(70,165,245,.78) !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    pointer-events:auto !important;
+    touch-action:none !important;
+  }
+  #mobileRotatePad:before{
+    content:'' !important;
+    position:absolute !important;
+    inset:11px !important;
+    border:1px solid rgba(70,165,245,.30) !important;
+    border-radius:50% !important;
+  }
+  #mobileRotateKnob{
+    position:absolute !important;
+    left:calc(50% - 9px) !important;
+    top:calc(50% - 9px) !important;
+    width:18px !important;
+    height:18px !important;
+    border-radius:50% !important;
+    border:2px solid rgba(85,175,255,.9) !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    pointer-events:none !important;
+  }
+
+  /* The two green call buttons are ABOVE the joystick, never over it. */
+  #mobilePanelToggle,#mobileJoystickToggle{
+    display:flex !important;
+    position:fixed !important;
+    right:10px !important;
+    width:48px !important;
+    height:48px !important;
+    z-index:50001 !important;
+    border:1px solid #72805d !important;
+    border-radius:7px !important;
+    background:rgba(39,62,46,.92) !important;
+    color:#dfe8d5 !important;
+    box-shadow:0 3px 12px rgba(0,0,0,.35) !important;
+    padding:0 !important;
+    align-items:center !important;
+    justify-content:center !important;
+    pointer-events:auto !important;
+    touch-action:manipulation !important;
+  }
+  #mobilePanelToggle{bottom:160px !important}
+  #mobileJoystickToggle{bottom:106px !important;font-size:20px !important}
+}
+@media (min-width:801px) and (pointer:fine){
+  #mobilePanelToggle,#mobileJoystickToggle,#mobileBlockJoystick{display:none !important}
+}
+</style>
+
+<style id="davinci-logo-blockschedule-dropdown">
+/* Da Vinci logo — visual replacement only. */
+.top .brandLogo img{object-fit:contain !important;background:transparent !important;}
+
+/* PLOKID / NIMIKIRI: compact drop-down, collapsed on startup. */
+#blockSchedule{overflow:hidden !important;}
+#blockSchedule .blockScheduleTitle{
+  position:relative !important;
+  cursor:pointer !important;
+  user-select:none !important;
+  padding-right:30px !important;
+}
+#blockSchedule .blockScheduleTitle::after{
+  content:"⌄";
+  position:absolute;
+  right:9px;
+  top:50%;
+  transform:translateY(-54%);
+  font-size:18px;
+  line-height:1;
+  font-weight:700;
+}
+#blockSchedule.is-collapsed .blockScheduleHead,
+#blockSchedule.is-collapsed #blockScheduleBody{display:none !important;}
+#blockSchedule.is-collapsed .blockScheduleTitle::after{content:"›";transform:translateY(-50%);}
+</style>
+<script id="blockschedule-dropdown-init">
+(function(){
+  function initBlockScheduleDropdown(){
+    const schedule=document.getElementById('blockSchedule');
+    if(!schedule) return;
+    const title=schedule.querySelector('.blockScheduleTitle');
+    if(!title) return;
+    if(schedule.dataset.dropdownReady==='1') return;
+    schedule.dataset.dropdownReady='1';
+    schedule.classList.add('is-collapsed');
+    title.setAttribute('role','button');
+    title.setAttribute('tabindex','0');
+    title.setAttribute('aria-expanded','false');
+    function toggle(){
+      const open=!schedule.classList.contains('is-collapsed');
+      schedule.classList.toggle('is-collapsed',open);
+      title.setAttribute('aria-expanded',open?'false':'true');
+    }
+    title.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();toggle();});
+    title.addEventListener('keydown',function(e){
+      if(e.key==='Enter' || e.key===' '){e.preventDefault();e.stopPropagation();toggle();}
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initBlockScheduleDropdown);
+  else initBlockScheduleDropdown();
+})();
+</script>
+</head>
+<body>
+<!-- ONE mobile control system: portrait + landscape -->
+<div id="maxcadMobileControls">
+  <button id="mobilePanelToggle" type="button" aria-expanded="false">MENÜÜ</button>
+  <button id="mobileJoystickToggle" type="button" aria-expanded="false">◉</button>
+</div>
+<div id="mobilePanelBackdrop" aria-hidden="true"></div>
+
+<div class="app">
+<header class="top">
+<div class="brand" aria-label="MAXCAD">
+  <div class="brandLogo">
+  <img alt="Leonardo da Vinci – Vitruvian Man" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%2317211d' stroke='%23c56a2b' stroke-width='2.4'/%3E%3Cg fill='none' stroke='%23e9e5d8' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='32' cy='17' r='4' fill='%23e9e5d8' stroke='none'/%3E%3Cpath d='M32 21v20M24 27l8 5 8-5M32 41l-8 12M32 41l8 12M17 33l15-1 15 1M20 27l12 5M44 27L32 32'/%3E%3Cpath d='M17 33l-5 8M47 33l5 8M24 53l-3 5M40 53l3 5'/%3E%3C/g%3E%3C/svg%3E" />
+</div>
+<div class="title">MAXCAD</div>
+</div>
+<button id="lineBtn" class="active">JOON</button><button id="freezeDrawBtn" type="button" title="Peata joonistamine">FREEZE</button>
+<button id="connectLineBtn" type="button">CONNECT</button><button id="measureBtn">MÕÕDA</button><button id="saveMeasureBtn" disabled>SALVESTA</button>
+<button id="autoScaffoldBtn">AUTO</button>
+<button id="preset1715Btn">17 × 15 m</button>
+<button id="copyBtn">KOPEERI</button>
+<button id="deleteBtn">KUSTUTA</button>
+<button id="undoBtn">TAGASI</button>
+<button id="autocadStyleBtn">AUTOCAD STIIL</button>
+<button id="clearBtn">PUHASTA</button>
+<button id="shareBtn">JAGA</button><button id="pdfImportBtn">PDF</button><input id="pdfFileInput" type="file" accept="application/pdf" hidden>
+</header>
+
+
+<div id="pdfShareModal" class="pdfShareModal" aria-hidden="true">
+  <div class="pdfShareCard">
+    <div class="pdfShareTitle">SHARE PDF</div>
+    <label for="pdfShareName">Faili nimi</label>
+    <input id="pdfShareName" type="text" value="MAXCAD_joonis" autocomplete="off">
+    <div class="pdfShareActions">
+      <button id="pdfSaveChoice" type="button">SAVE PDF</button>
+      <button id="pdfShareChoice" type="button">JAGA</button>
+    </div>
+    <button id="pdfShareCancel" type="button" class="pdfShareCancel">TAGASI</button>
+  </div>
+</div>
+
+<div class="main">
+<aside class="left">
+<button id="gridBtn" class="active">#</button>
+<button id="orthoBtn" class="active">⊥</button>
+<button id="zoomIn" title="Suurenda">+</button>
+<div class="zoomSliderWrap" title="Mõõtkava">
+  <input id="zoomSlider" type="range" min="0" max="100" value="0" step="1" aria-label="Mõõtkava">
+  <span id="zoomScaleLabel">1:2000</span>
+</div>
+<button id="zoomOut" title="Vähenda">−</button>
+<button id="fitBtn">⌂</button>
+<button id="eraserBtn" type="button" title="Lasth on kasutatav ainult FREEZE režiimis" disabled aria-label="Lasth"> </button>
+</aside>
+
+<section class="canvasWrap" id="canvasWrap">
+<div id="mobileBlockJoystick" aria-label="Valitud ploki juhtimine">
+  <div id="mobileDpad" aria-label="Liiguta plokki">
+    <button data-dir="up" aria-label="Üles">▲</button>
+    <button data-dir="left" aria-label="Vasakule">◀</button>
+    <button data-dir="right" aria-label="Paremale">▶</button>
+    <button data-dir="down" aria-label="Alla">▼</button>
+  </div>
+  <div id="mobileRotatePad" aria-label="Pööra plokki 360 kraadi">
+    <div id="mobileRotateKnob"></div>
+  </div>
+</div>
+
+<div id="wallSchedule" class="wallSchedule" aria-label="Seinte mõõtude tabel">
+  <div class="wallScheduleTitle">SEINAD</div>
+  <div class="wallScheduleHead">
+    <span>SEIN</span><span></span><span>PIKKUS</span><span>NURK</span><span>PLOKID</span><span>JÄÄK</span>
+  </div>
+  <div id="wallScheduleBody"></div>
+</div>
+<div id="blockSchedule" class="blockSchedule" aria-label="Plokkide nimikiri"><div class="blockScheduleTitle">PLOKID / NIMIKIRI</div><div class="blockScheduleHead"><span>SUURUS</span><span>KOGUS</span><span>ÜKSUS</span><span>KOKKU</span></div><div id="blockScheduleBody"></div></div>
+<canvas id="canvas"></canvas>
+
+<div id="pdfTools" aria-label="PDF tööriistad">
+  <span id="pdfName">PDF: puudub</span>
+  <button id="pdfPrev" title="Eelmine PDF leht">‹</button>
+  <span id="pdfPageInfo">0 / 0</span>
+  <button id="pdfNext" title="Järgmine PDF leht">›</button>
+  <button id="pdfZoomOut" title="Vähenda PDF-i">PDF −</button><button id="pdfZoomIn" title="Suurenda PDF-i">PDF +</button><button id="pdfFitBtn" title="Mahuta PDF tööalale">MAHUTA PDF</button>
+  <button id="pdfOpacityBtn" title="PDF läbipaistvus">PDF 70%</button>
+  <button id="pdfHideBtn" title="Näita/peida PDF">PEIDA</button>
+</div>
+
+<div id="dynamicInput" aria-label="Joone pikkus">
+ <div class="dynRow">
+  <input id="dynLength" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done">
+  <span id="dynAngleDisplay" class="dynAngleDisplay">0°</span>
+  <button id="dynOk" type="button">OK</button>
+ </div>
+ <div class="dynHint">Pikkus · nurk määratakse liikumise suuna järgi</div>
+</div>
+</section>
+
+<aside class="right">
+
+
+
+
+
+<div class="section menu-hidden">
+<div class="sectionTitle">Valitud joon</div>
+<div class="field"><label>Pikkus (mm)</label><input id="lineLength" type="number"></div>
+<button class="action primary" id="applyLine">Muuda pikkust</button>
+<button class="action" id="editLengthBtn">Muuda pikkust hiire suunas</button>
+</div>
+
+<div class="section menu-block-section">
+<div class="sectionTitle">2. Tellinguplokid – horisontaalne suund</div>
+<div class="blocks">
+<button class="block" data-length="3070"><b>3070</b><span>732 × 3070 mm</span></button>
+<button class="block" data-length="2570"><b>2570</b><span>732 × 2570 mm</span></button>
+<button class="block" data-length="2070"><b>2070</b><span>732 × 2070 mm</span></button>
+<button class="block" data-length="1570"><b>1570</b><span>732 × 1570 mm</span></button>
+<button class="block" data-length="1400"><b>1400</b><span>732 × 1400 mm</span></button>
+<button class="block" data-length="1090"><b>1090</b><span>732 × 1090 mm</span></button>
+<button class="block" data-length="730"><b>730</b><span>732 × 730 mm</span></button>
+</div>
+</div>
+
+<div class="section menu-block-section">
+<div class="sectionTitle">3. Tellinguplokid – vertikaalne suund</div>
+<div class="blocks verticalBlocks">
+<button class="block" data-length="3070" data-angle="90"><b>3070</b><span>732 × 3070 mm</span></button>
+<button class="block" data-length="2570" data-angle="90"><b>2570</b><span>732 × 2570 mm</span></button>
+<button class="block" data-length="2070" data-angle="90"><b>2070</b><span>732 × 2070 mm</span></button>
+<button class="block" data-length="1570" data-angle="90"><b>1570</b><span>732 × 1570 mm</span></button>
+<button class="block" data-length="1400" data-angle="90"><b>1400</b><span>732 × 1400 mm</span></button>
+<button class="block" data-length="1090" data-angle="90"><b>1090</b><span>732 × 1090 mm</span></button>
+<button class="block" data-length="730" data-angle="90"><b>730</b><span>732 × 730 mm</span></button>
+</div>
+</div>
+
+<div class="section compactSelected menu-hidden">
+<div class="sectionTitle">Valitud plokk</div>
+
+<div class="field"><label>Pikkus (mm)</label><input id="blockLength" type="number" min="100"></div>
+<button class="action primary" id="applyBlockLength">Rakenda pikkus</button>
+
+<div class="field"><label>Suund</label><div class="row">
+<button class="action dirBtn" data-dir="0">→ 0°</button>
+<button class="action dirBtn" data-dir="90">↓ 90°</button>
+<button class="action dirBtn" data-dir="180">← 180°</button>
+<button class="action dirBtn" data-dir="270">↑ 270°</button>
+</div></div>
+
+<div class="field"><label>Nurk (°)</label><input id="blockAngle" type="number" min="0" max="360"></div>
+<div class="row">
+<button class="action" id="rotateLeft">−15°</button>
+<button class="action" id="rotateRight">+15°</button>
+</div>
+<button class="action primary" id="applyAngle">Rakenda nurk</button>
+<button class="action" id="copyBtn2">Kopeeri valitud plokk</button>
+</div>
+
+</aside>
+</div>
+
+<footer class="bottom">
+<span id="status">Valmis – töölaud on tühi</span>
+<span id="coords">X: 0 Y: 0</span>
+</footer>
+
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+const wrap=document.getElementById("canvasWrap");
+const dyn=document.getElementById("dynamicInput");
+const dynLength=document.getElementById("dynLength");
+const dynAngle={value:""};
+const dynAngleDisplay=document.getElementById("dynAngleDisplay");
+const dynOk=document.getElementById("dynOk");
+
+const DEFAULT_ZOOM_SCALE=110/10000;
+let W=0,H=0,scale=DEFAULT_ZOOM_SCALE,ox=0,oy=0;
+let grid=true,ortho=true,mode="line";
+let drawFrozen=false;
+let lines=[],blocks=[],history=[],redoHistory=[];
+let first=null,preview=null;
+let selectedLine=-1,selectedBlock=-1;
+let allSelected=false;
+let dragging=false,dragBlock=-1,dragDX=0,dragDY=0;
+let editMode="draw",editLineIndex=-1;
+let lastMouse={x:0,y:0};
+let dynAngleManual=false;
+let mobileDrawInputPending=false;
+let clipboardBlock=null;
+let rotatingBlock=-1;
+let rotateStartAngle=0;
+let rotateBaseAngle=0;
+let rotateHistorySaved=false;
+let rotatingLineAngle=false;
+let previewLineAngle=null;
+let previewLineLength=null;
+let lockedSnapPoint=null;
+let measureMode=false;
+let measureFirstPoint=null;
+let measureSecondPoint=null;
+let measureResult=null;
+let savedMeasurements=[];
+
+// PDF underlay: the imported PDF remains a non-destructive background.
+let pdfDoc=null, pdfPageNum=0, pdfPageCount=0, pdfPageCanvas=null, pdfPageWmm=0, pdfPageHmm=0;
+let pdfVisible=true, pdfOpacity=.70, pdfFileName="";
+let pdfRenderToken=0;
+
+// Mobile/touch navigation state. Mouse interaction remains unchanged.
+const touchPoints=new Map();
+let touchGesture=false;
+let touchPinchStartDist=0;
+let touchPinchStartScale=1;
+let touchPinchStartMid={x:0,y:0};
+let touchPanStart={x:0,y:0};
+let touchPanStartOx=0;
+let touchPanStartOy=0;
+let touchPinchWorld={x:0,y:0};
+let touchSinglePointer=null;
+let touchSingleStart={x:0,y:0};
+let touchSingleMoved=false;
+
+function touchMidpoint(){
+ const pts=[...touchPoints.values()];
+ if(pts.length<2)return null;
+ return {x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+}
+function touchDistance(){
+ const pts=[...touchPoints.values()];
+ if(pts.length<2)return 0;
+ return Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y);
+}
+
+function resize(){
+ const r=wrap.getBoundingClientRect(),d=devicePixelRatio||1;
+ W=r.width;H=r.height;
+ canvas.width=W*d;canvas.height=H*d;
+ ctx.setTransform(d,0,0,d,0,0);
+ draw();
+}
+window.addEventListener("resize",resize);
+
+function ws(x,y){return{x:W/2+ox+x*scale,y:H/2+oy+y*scale}}
+function sw(x,y){return{x:(x-W/2-ox)/scale,y:(y-H/2-oy)/scale}}
+
+function focusWorldPoint(x,y){
+  // Keep the active line start point centered while changing its angle.
+  // This is the CAD-like focus the drawing needs for the last line.
+  ox = -x*scale;
+  oy = -y*scale;
+}
+function mouse(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+function dist(a,b){return Math.hypot(b.x-a.x,b.y-a.y)}
+function lineLen(l){return dist({x:l.x1,y:l.y1},{x:l.x2,y:l.y2})}
+function lineAngle(l){return Math.atan2(l.y2-l.y1,l.x2-l.x1)*180/Math.PI}
+function setStatus(s){document.getElementById("status").textContent=s}
+
+function historyState(){
+ return JSON.stringify({lines,blocks,savedMeasurements});
+}
+function updateHistoryButtons(){
+ const u=document.getElementById("undoFloatBtn"),r=document.getElementById("redoFloatBtn");
+ if(u)u.disabled=!history.length;
+ if(r)r.disabled=!redoHistory.length;
+}
+function pushHistory(){
+ const snap=historyState();
+ const last=history.length?history[history.length-1]:null;
+ if(last===snap){updateHistoryButtons();return;}
+ history.push(snap);
+ redoHistory=[];
+ if(history.length>80)history.shift();
+ updateHistoryButtons();
+}
+function restoreHistoryState(raw){
+ const state=JSON.parse(raw);
+ lines=state.lines||[];
+ blocks=state.blocks||[];
+ savedMeasurements=state.savedMeasurements||[];
+ selectedLine=-1;selectedBlock=-1;allSelected=false;
+ first=null;preview=null;previewLineAngle=null;previewLineLength=null;
+ editMode="draw";editLineIndex=-1;
+ hideDynamic();updateLineFields();updateBlockFields();draw();
+}
+function performUndo(){
+ if(!history.length){setStatus("Tagasivõtmiseks pole midagi");updateHistoryButtons();return false;}
+ const current=historyState();
+ let previous=null;
+ // History contains the state from immediately before an action.
+ // Skip accidental duplicate snapshots so Undo always changes the drawing.
+ while(history.length){
+   const candidate=history.pop();
+   if(candidate!==current){ previous=candidate; break; }
+ }
+ if(previous===null){
+   setStatus("Tagasivõtmiseks pole midagi");
+   updateHistoryButtons();
+   return false;
+ }
+ redoHistory.push(current);
+ restoreHistoryState(previous);
+ // Do not rely on the normal draw cycle: clear the real canvas first.
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ draw();
+ updateHistoryButtons();
+ setStatus("Undo – viimane tegevus tagasi võetud");
+ return true;
+}
+
+function performRedo(){
+ if(!redoHistory.length){setStatus("Edasitegemiseks pole midagi");updateHistoryButtons();return false;}
+ const current=historyState();
+ let next=null;
+ while(redoHistory.length){
+   const candidate=redoHistory.pop();
+   if(candidate!==current){ next=candidate; break; }
+ }
+ if(next===null){
+   setStatus("Edasitegemiseks pole midagi");
+   updateHistoryButtons();
+   return false;
+ }
+ history.push(current);
+ restoreHistoryState(next);
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ draw();
+ updateHistoryButtons();
+ setStatus("Redo – tegevus taastatud");
+ return true;
+}
+
+function undo(){
+ if(!history.length){setStatus("Tagasivõtmiseks pole midagi");updateHistoryButtons();return;}
+ if(window.confirm("Võtta viimane tegevus TAGASI?")) performUndo();
+}
+
+function redo(){
+ if(!redoHistory.length){setStatus("Edasitegemiseks pole midagi");updateHistoryButtons();return;}
+ if(window.confirm("Teha viimane tegevus EDASI?")) performRedo();
+}
+
+function selectAllObjects(){
+ if(!lines.length && !blocks.length){
+   setStatus("Joonisel pole objekte");
+   return;
+ }
+ allSelected=true;
+ selectedLine=-1;
+ selectedBlock=-1;
+ setStatus("Kõik objektid valitud – Ctrl+A");
+ draw();
+}
+
+
+
+
+function getLastBlockForWall(wallIndex){
+  let best=null;
+  blocks.forEach((b,i)=>{
+    if(blockWallIndex(b)!==wallIndex)return;
+    if(!best){best={b,i};return;}
+
+    const wall=lines[wallIndex];
+    if(!wall)return;
+    const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+    const L=Math.hypot(dx,dy)||1;
+    const ux=dx/L,uy=dy/L;
+    const cur=(b.x-wall.x1)*ux+(b.y-wall.y1)*uy;
+    const old=(best.b.x-wall.x1)*ux+(best.b.y-wall.y1)*uy;
+    if(cur>old)best={b,i};
+  });
+  return best;
+}
+
+function continuationDirectionForBlock(last){
+  // The continuation direction follows the side of the building:
+  // top wall    -> right
+  // right wall  -> down
+  // bottom wall -> left
+  // left wall   -> up
+  //
+  // For a non-rectangular house, determine the side from the wall
+  // midpoint relative to the drawing bounding box. This keeps the
+  // same clockwise placement logic on every wall.
+  const wi=blockWallIndex(last);
+  if(wi>=0 && lines[wi]){
+    const wall=lines[wi];
+
+    const dx=wall.x2-wall.x1;
+    const dy=wall.y2-wall.y1;
+    const L=Math.hypot(dx,dy)||1;
+    const ux=dx/L,uy=dy/L;
+
+    // Get drawing bounds from all wall endpoints.
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    lines.forEach(l=>{
+      minX=Math.min(minX,l.x1,l.x2);
+      maxX=Math.max(maxX,l.x1,l.x2);
+      minY=Math.min(minY,l.y1,l.y2);
+      maxY=Math.max(maxY,l.y1,l.y2);
+    });
+
+    const mx=(wall.x1+wall.x2)/2;
+    const my=(wall.y1+wall.y2)/2;
+    const cx=(minX+maxX)/2;
+    const cy=(minY+maxY)/2;
+
+    // Horizontal wall: upper side goes right, lower side goes left.
+    if(Math.abs(ux)>=Math.abs(uy)){
+      return my<=cy ? {ux:1,uy:0} : {ux:-1,uy:0};
+    }
+
+    // Vertical wall: right side goes down, left side goes up.
+    return mx>=cx ? {ux:0,uy:1} : {ux:0,uy:-1};
+  }
+
+  // No wall assignment: preserve the block's own direction.
+  const a=last.angle*Math.PI/180;
+  return {ux:Math.cos(a),uy:Math.sin(a)};
+}
+
+function continuationArrowGeometry(last){
+  const dir=continuationDirectionForBlock(last);
+  const ux=dir.ux,uy=dir.uy;
+
+  // If this block has reached the 1032 mm transition point, show the
+  // continuation marker at the next wall's start instead.
+  const wi=blockWallIndex(last);
+  const state=wallContinuationState(last,dir);
+
+  let displayWall=wi;
+  let displayDir=dir;
+  let displaySource=last;
+
+  if(state && state.nextOverhang>CONTINUATION_MAX_OVERHANG){
+    const next=last._continuationNextWall ?? nextWallForContinuation(wi,dir);
+    if(next>=0 && lines[next]){
+      displayWall=next;
+      const w=lines[next];
+      const dx=w.x2-w.x1,dy=w.y2-w.y1;
+      const L=Math.hypot(dx,dy)||1;
+      const ux2=dx/L,uy2=dy/L;
+
+      const current=lines[wi];
+      const d1=Math.hypot(current.x2-w.x1,current.y2-w.y1);
+      const d2=Math.hypot(current.x2-w.x2,current.y2-w.y2);
+      displayDir=d2<d1?{ux:-ux2,uy:-uy2}:{ux:ux2,uy:uy2};
+
+      const startAtEnd=d2<d1;
+      const sx=startAtEnd?w.x2:w.x1;
+      const sy=startAtEnd?w.y2:w.y1;
+
+      const nx=-displayDir.uy,ny=displayDir.ux;
+      const offset=OUTSIDE_BOUNDARY;
+
+      return {
+        ux:displayDir.ux,uy:displayDir.uy,
+        nx,ny,
+        centerX:sx+nx*offset,
+        centerY:sy+ny*offset,
+        tailX:sx+nx*offset-displayDir.ux*150,
+        tailY:sy+ny*offset-displayDir.uy*150,
+        tipX:sx+nx*offset+displayDir.ux*150,
+        tipY:sy+ny*offset+displayDir.uy*150
+      };
+    }
+  }
+
+  const nx=-uy,ny=ux;
+  const offset=OUTSIDE_BOUNDARY;
+
+  let side=1;
+  if(wi>=0 && lines[wi]){
+    const wall=lines[wi];
+    const wx=wall.x2-wall.x1,wy=wall.y2-wall.y1;
+    const wl=Math.hypot(wx,wy)||1;
+    const wnx=-wy/wl,wny=wx/wl;
+    const s=(last.x-wall.x1)*wnx+(last.y-wall.y1)*wny;
+    if(s<0)side=-1;
+  }
+
+  const centerX=last.x+nx*offset*side;
+  const centerY=last.y+ny*offset*side;
+  const arrowLength=300;
+
+  return {
+    ux,uy,nx:nx*side,ny:ny*side,
+    centerX,centerY,
+    tailX:centerX-ux*arrowLength/2,
+    tailY:centerY-uy*arrowLength/2,
+    tipX:centerX+ux*arrowLength/2,
+    tipY:centerY+uy*arrowLength/2
+  };
+}
+
+
+function continuationArrowTarget(world){
+  // Continuation is available ONLY from:
+  // 1) the currently selected block, or
+  // 2) when nothing is selected, the last placed block.
+  // Other blocks are never continuation buttons.
+  let source=null;
+  let wallIndex=-1;
+
+  if(selectedBlock>=0 && blocks[selectedBlock]){
+    source=blocks[selectedBlock];
+    wallIndex=blockWallIndex(source);
+  }else if(blocks.length){
+    source=blocks[blocks.length-1];
+    wallIndex=blockWallIndex(source);
+  }
+
+  if(!source)return false;
+
+  const g=continuationArrowGeometry(source);
+  const m=ws(g.centerX,g.centerY);
+  const p=ws(world.x,world.y);
+  const d=Math.hypot(p.x-m.x,p.y-m.y);
+
+  // The arrow is the only active continuation control.
+  // Use a generous hit area around the arrow, but never around the block.
+  const hitRadius=Math.max(34,Math.min(60,42/Math.max(scale,.01)));
+  if(d<=hitRadius){
+    return {source,wallIndex,dist:d};
+  }
+
+  return false;
+}
+
+const BLOCK_WIDTH=732;
+const WALL_CLEARANCE=300;
+const OUTSIDE_BOUNDARY=BLOCK_WIDTH+WALL_CLEARANCE;
+const CONTINUATION_MAX_OVERHANG=OUTSIDE_BOUNDARY;
+
+// Determine the next wall in the clockwise installation sequence.
+// For the standard rectangle this is:
+// top -> right -> bottom -> left -> top.
+// For arbitrary polygons, choose the wall whose direction continues
+// clockwise from the current wall and whose start is nearest to the
+// current wall end.
+function nextWallForContinuation(wallIndex,dir){
+  if(wallIndex<0 || !lines[wallIndex])return -1;
+
+  const current=lines[wallIndex];
+  const cdx=current.x2-current.x1,cdy=current.y2-current.y1;
+  const cL=Math.hypot(cdx,cdy)||1;
+  const cux=cdx/cL,cuy=cdy/cL;
+
+  let best=-1,bestScore=Infinity;
+
+  lines.forEach((w,i)=>{
+    if(i===wallIndex)return;
+    const dx=w.x2-w.x1,dy=w.y2-w.y1;
+    const L=Math.hypot(dx,dy)||1;
+    const ux=dx/L,uy=dy/L;
+
+    // Prefer a wall perpendicular to the current wall.
+    const perpendicular=Math.abs(ux*cux+uy*cuy);
+    if(perpendicular>0.25)return;
+
+    // Current direction points toward the next corner.
+    const cornerDist=Math.min(
+      Math.hypot(current.x2-w.x1,current.y2-w.y1),
+      Math.hypot(current.x2-w.x2,current.y2-w.y2)
+    );
+
+    const score=cornerDist+perpendicular*100000;
+    if(score<bestScore){
+      bestScore=score;
+      best=i;
+    }
+  });
+
+  return best;
+}
+
+function continuationWallStartPoint(wallIndex,dir){
+  const wall=lines[wallIndex];
+  if(!wall)return null;
+
+  const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+  const L=Math.hypot(dx,dy)||1;
+  const ux=dx/L,uy=dy/L;
+
+  // Find the end of this wall that is closest to the previous corner.
+  // For a clockwise sequence the first block starts at that end.
+  let t=0;
+  if(dir){
+    const sign=(dir.ux*ux+dir.uy*uy)>=0?1:-1;
+    t=sign>0 ? 0 : L;
+  }
+
+  return {
+    x:wall.x1+ux*t,
+    y:wall.y1+uy*t,
+    ux,uy,L,t
+  };
+}
+
+function wallContinuationState(source, dir){
+  const wi=blockWallIndex(source);
+  if(wi<0 || !lines[wi]) return null;
+
+  const wall=lines[wi];
+  const dx=wall.x2-wall.x1, dy=wall.y2-wall.y1;
+  const L=Math.hypot(dx,dy)||1;
+  const ux=dx/L, uy=dy/L;
+
+  const t=((source.x-wall.x1)*ux+(source.y-wall.y1)*uy);
+
+  const a=source.angle*Math.PI/180;
+  const bx=Math.cos(a), by=Math.sin(a);
+  const alongExtent=
+    Math.abs(bx*ux+by*uy)*(source.length/2)+
+    Math.abs(-by*ux+bx*uy)*(732/2);
+
+  const sourceStart=t-alongExtent;
+  const sourceEnd=t+alongExtent;
+
+  const directionSign=(dir.ux*ux+dir.uy*uy)>=0?1:-1;
+  const forwardEdge=directionSign>0?sourceEnd:sourceStart;
+
+  // Distance the NEXT block would extend outside this wall.
+  const nextEdge=directionSign>0
+    ? forwardEdge+source.length
+    : forwardEdge-source.length;
+
+  const nextOverhang=directionSign>0
+    ? Math.max(0,nextEdge-L)
+    : Math.max(0,-nextEdge);
+
+  return {
+    wall,L,ux,uy,directionSign,
+    sourceStart,sourceEnd,forwardEdge,
+    nextEdge,nextOverhang
+  };
+}
+
+function makeContinuationBlock(source,dir,wallIndex=null){
+  const ux=dir.ux,uy=dir.uy;
+
+  const copyAngle=source._orientationFixed
+    ? source.angle
+    : Math.atan2(uy,ux)*180/Math.PI;
+
+  return {
+    x:source.x+ux*source.length,
+    y:source.y+uy*source.length,
+    length:source.length,
+    angle:copyAngle,
+    _wallIndex:wallIndex!==null?wallIndex:source._wallIndex,
+    _orientationFixed:source._orientationFixed
+  };
+}
+
+function makeFirstBlockForNextWall(source,nextIndex){
+  const wall=lines[nextIndex];
+  if(!wall)return null;
+
+  const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+  const L=Math.hypot(dx,dy)||1;
+  const ux=dx/L,uy=dy/L;
+
+  // Next wall direction follows the same clockwise sequence.
+  // Pick the endpoint nearest to the previous wall's end.
+  const current=lines[blockWallIndex(source)];
+  let startAtEnd=false;
+  if(current){
+    const d1=Math.hypot(current.x2-wall.x1,current.y2-wall.y1);
+    const d2=Math.hypot(current.x2-wall.x2,current.y2-wall.y2);
+    startAtEnd=d2<d1;
+  }
+
+  const workUx=startAtEnd?-ux:ux;
+  const workUy=startAtEnd?-uy:uy;
+
+  const a=source.angle*Math.PI/180;
+  const fixed=source._orientationFixed;
+  const angle=fixed
+    ? (Math.abs(Math.sin(a))>0.7 ? a*180/Math.PI : Math.atan2(workUy,workUx)*180/Math.PI)
+    : Math.atan2(workUy,workUx)*180/Math.PI;
+
+  const startX=startAtEnd?wall.x2:wall.x1;
+  const startY=startAtEnd?wall.y2:wall.y1;
+
+  // First block on a new wall starts at the wall's corner, with the
+  // established 732 mm outside-base rule.
+  const offset=-OUTSIDE_BOUNDARY+source.length/2;
+
+  return {
+    x:startX+workUx*offset,
+    y:startY+workUy*offset,
+    length:source.length,
+    angle,
+    _wallIndex:nextIndex,
+    _orientationFixed:fixed,
+    _continuationStart:true
+  };
+}
+
+function continueLastBlock(world){
+  const hit=continuationArrowTarget(world);
+  if(!hit)return false;
+
+  const source=hit.source;
+  let dir=continuationDirectionForBlock(source);
+  const state=wallContinuationState(source,dir);
+
+  if(state && state.nextOverhang>CONTINUATION_MAX_OVERHANG){
+    const currentWall=blockWallIndex(source);
+    const nextIndex=nextWallForContinuation(currentWall,dir);
+
+    if(nextIndex<0){
+      setStatus("Seina lõpp – järgmist seina ei leitud");
+      return true;
+    }
+
+    // Do NOT add the oversized block.
+    // The current wall keeps its empty end gap.
+    // Continuation moves to the next wall.
+    source._continuationGap=Math.round(state.nextOverhang);
+    source._continuationFixedPoint=true;
+    source._continuationNextWall=nextIndex;
+
+    const nextBlock=makeFirstBlockForNextWall(source,nextIndex);
+    if(!nextBlock){
+      setStatus("Järgmise seina algust ei leitud");
+      return true;
+    }
+
+    if(blockOverlapsAny(nextBlock,-1)){
+      setStatus("Järgmise seina alguses pole piisavalt ruumi");
+      return true;
+    }
+
+    pushHistory();
+    blocks.push(nextBlock);
+
+    // Attach to the next wall without changing a fixed vertical block.
+    snapBlockToAssignedWall(nextBlock,nextBlock.x,nextBlock.y);
+
+    selectedBlock=blocks.length-1;
+    selectedLine=-1;
+    updateBlockFields();
+    setStatus("Seina lõpp – jätkamine järgmise seina suunas");
+    draw();
+    return true;
+  }
+
+  const copy=makeContinuationBlock(source,dir);
+
+  if(blockOverlapsAny(copy,-1)){
+    setStatus("Järgmine plokk ei mahu – ainult otsast otsani");
+    return true;
+  }
+
+  pushHistory();
+  blocks.push(copy);
+
+  if(blockWallIndex(copy)>=0){
+    snapBlockToAssignedWall(copy,copy.x,copy.y);
+  }
+
+  selectedBlock=blocks.length-1;
+  selectedLine=-1;
+  updateBlockFields();
+  setStatus("Jätkamine mööda sama seina");
+  draw();
+  return true;
+}
+
+
+function drawContinuationArrow(){
+  // Jätkamisnupp eemaldatud. Plokkide paigutus toimub valitud ploki kaudu.
+}
+
+function drawArrowGeometry(g){
+  const p1=ws(g.tailX,g.tailY);
+  const p2=ws(g.tipX,g.tipY);
+  const size=18;
+
+  ctx.save();
+  ctx.strokeStyle="#f57c00";
+  ctx.fillStyle="#fff";
+  ctx.lineWidth=3;
+
+  ctx.beginPath();
+  ctx.moveTo(p1.x,p1.y);
+  ctx.lineTo(p2.x,p2.y);
+  ctx.stroke();
+
+  const hx=-g.uy,hy=g.ux;
+  ctx.beginPath();
+  ctx.moveTo(p2.x,p2.y);
+  ctx.lineTo(p2.x-g.ux*size-hx*size*.65,
+             p2.y-g.uy*size-hy*size*.65);
+  ctx.lineTo(p2.x-g.ux*size+hx*size*.65,
+             p2.y-g.uy*size+hy*size*.65);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function wallBlockStats(wall){
+ const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+ const len=Math.hypot(dx,dy)||1;
+ const ux=dx/len,uy=dy/len;
+ const nx=-uy,ny=ux;
+ let total=0,count=0;
+
+ blocks.forEach(bl=>{
+   const ba=bl.angle*Math.PI/180;
+   const bx=Math.cos(ba),by=Math.sin(ba);
+   const parallel=Math.abs(bx*ux+by*uy);
+   if(parallel<0.94)return;
+
+   // Associate a block only with the wall it is actually beside.
+   const side=(bl.x-wall.x1)*nx+(bl.y-wall.y1)*ny;
+   const along=(bl.x-wall.x1)*ux+(bl.y-wall.y1)*uy;
+   if(Math.abs(side)<=1400 && along>-bl.length/2-800 && along<len+bl.length/2+800){
+     total+=bl.length;
+     count++;
+   }
+ });
+ return {total,count,remaining:len-total};
+}
+
+function normalizedAngle(A){
+ A=((Number(A)%360)+360)%360;
+ return Math.round(A*100)/100;
+}
+
+function updateWallSchedule(){
+ const body=document.getElementById("wallScheduleBody");
+ if(!body)return;
+
+ if(!lines.length){
+   body.innerHTML='<div class="wallScheduleRow"><span class="wallName">—</span><span class="num">—</span><span class="num">—</span><span class="num">—</span><span class="num">—</span></div>';
+   return;
+ }
+
+ body.innerHTML=lines.map((l,i)=>{
+   const s=wallBlockStats(l);
+   const len=Math.round(lineLen(l));
+   const angle=normalizedAngle(lineAngle(l));
+   const total=Math.round(s.total);
+   const rem=Math.round(s.remaining);
+   const remText=(rem>=0?"+":"")+rem+" mm";
+
+   return `<div class="wallScheduleRow" data-wall-index="${i}">
+     <span class="wallName">SEIN ${String.fromCharCode(65+i)}</span>
+     <span><button type="button" class="wallDeleteBtn" data-wall-index="${i}" title="Kustuta sein">×</button></span>
+     <span><input class="wallLengthInput" data-wall-index="${i}" type="number" min="1" step="1" value="${len}" aria-label="Sein ${String.fromCharCode(65+i)} pikkus"></span>
+     <span><input class="wallAngleInput" data-wall-index="${i}" type="number" step="1" value="${angle}" aria-label="Sein ${String.fromCharCode(65+i)} nurk"></span>
+     <span class="num">${total} mm</span>
+     <span class="num">${remText}</span>
+   </div>`;
+ }).join("")+
+ '<div class="wallScheduleHint">Pikkus ja nurk on muudetavad. Enter rakendab muudatuse. × kustutab seina.</div>';
+}
+
+function applyWallScheduleValue(input){
+ const i=Number(input.dataset.wallIndex);
+ if(!Number.isInteger(i)||!lines[i])return;
+
+ const l=lines[i];
+ const type=input.classList.contains("wallLengthInput") ? "length" : "angle";
+ const value=Number(String(input.value).replace(",","."));
+
+ if(!Number.isFinite(value) || (type==="length" && value<=0)){
+   updateWallSchedule();
+   return;
+ }
+
+ pushHistory();
+
+ const L=type==="length" ? value : lineLen(l);
+ const A=type==="angle" ? normalizedAngle(value) : normalizedAngle(lineAngle(l));
+ const r=A*Math.PI/180;
+
+ // Every wall is independent: keep its own start point fixed.
+ lines[i]={
+   x1:l.x1,
+   y1:l.y1,
+   x2:l.x1+L*Math.cos(r),
+   y2:l.y1+L*Math.sin(r)
+ };
+
+ selectedLine=i;
+ selectedBlock=-1;
+ allSelected=false;
+
+ updateLineFields();
+ draw();
+ setStatus("SEIN "+String.fromCharCode(65+i)+" uuendatud – "+Math.round(L)+" mm / "+Math.round(A)+"°");
+}
+
+function deleteWallFromSchedule(i,e){
+  if(e){ e.preventDefault(); e.stopPropagation(); }
+  i=Number(i);
+  if(!Number.isInteger(i) || !lines[i])return;
+
+  pushHistory();
+
+  // Delete the wall from the geometry itself, not only from the table.
+  // The next draw() therefore removes the line from the canvas too.
+  lines.splice(i,1);
+
+  blocks.forEach(b=>{
+    if(Number.isInteger(b._wallIndex)){
+      if(b._wallIndex===i){
+        b._wallIndex=undefined;
+        b._hasWallBase=false;
+      }else if(b._wallIndex>i){
+        b._wallIndex--;
+      }
+    }
+  });
+
+  selectedLine=-1;
+  selectedBlock=-1;
+  allSelected=false;
+  first=null;
+  preview=null;
+  editMode="draw";
+  editLineIndex=-1;
+  hideDynamic();
+
+  updateLineFields();
+  updateBlockFields();
+  updateWallSchedule();
+  draw();
+  setStatus("Sein "+String.fromCharCode(65+i)+" kustutatud");
+}
+
+document.addEventListener("pointerdown",e=>{
+  const btn=e.target.closest && e.target.closest(".wallDeleteBtn");
+  if(!btn)return;
+  e.preventDefault();
+  e.stopPropagation();
+  const i=Number(btn.dataset.wallIndex);
+  if(!Number.isInteger(i) || !lines[i])return;
+  deleteWallFromSchedule(i,e);
+},true);
+
+document.addEventListener("click",e=>{
+  const btn=e.target.closest && e.target.closest(".wallDeleteBtn");
+  if(!btn)return;
+  e.preventDefault();
+  e.stopPropagation();
+});
+
+document.addEventListener("change",e=>{
+ if(e.target.classList.contains("wallLengthInput") ||
+    e.target.classList.contains("wallAngleInput")){
+   applyWallScheduleValue(e.target);
+ }
+});
+
+document.addEventListener("keydown",e=>{
+ if(e.key!=="Enter")return;
+ const input=e.target;
+ if(input.classList.contains("wallLengthInput") ||
+    input.classList.contains("wallAngleInput")){
+   e.preventDefault();
+   e.stopPropagation();
+
+   // Enter = kohe rakenda väärtus joonisele.
+   // Väärtus võetakse otse aktiivsest Excel-stiilis lahtrist.
+   applyWallScheduleValue(input);
+
+   // Jäta lahter aktiivseks, et järgmise väärtuse saab kohe kirjutada.
+   requestAnimationFrame(()=>{
+     input.focus();
+     try{ input.select(); }catch(_){}
+   });
+ }
+});
+
+
+
+
+function findLine(p){
+  let best=-1,bd=Infinity;
+  lines.forEach((l,i)=>{
+    const d=pointLineDistance(p,l);
+    if(d<bd){bd=d;best=i}
+  });
+  return bd<250/scale?best:-1;
+}
+
+function closestPointOnSegment(px,py,x1,y1,x2,y2){
+  const dx=x2-x1,dy=y2-y1,d2=dx*dx+dy*dy;
+  if(!d2)return {x:x1,y:y1,distance:Math.hypot(px-x1,py-y1)};
+  let t=((px-x1)*dx+(py-y1)*dy)/d2;
+  t=Math.max(0,Math.min(1,t));
+  const x=x1+t*dx,y=y1+t*dy;
+  return {x,y,distance:Math.hypot(px-x,y-py)};
+}
+
+function nearestPointOnBlock(p,b){
+  const poly=blockGeometry(b);
+  let best=null;
+  for(let i=0;i<poly.length;i++){
+    const a=poly[i],c=poly[(i+1)%poly.length];
+    const q=closestPointOnSegment(p.x,p.y,a.x,a.y,c.x,c.y);
+    if(!best||q.distance<best.distance)best={x:q.x,y:q.y,distance:q.distance};
+  }
+  return best;
+}
+
+// One click = one exact measurement point.
+// The point snaps to the nearest line or the nearest side/corner of a block.
+function pickMeasurePoint(p){
+  let best=null;
+
+  lines.forEach((l,i)=>{
+    const q=closestPointOnSegment(p.x,p.y,l.x1,l.y1,l.x2,l.y2);
+    if(!best||q.distance<best.distance){
+      best={x:q.x,y:q.y,distance:q.distance,type:"line",index:i};
+    }
+  });
+
+  blocks.forEach((b,i)=>{
+    const q=nearestPointOnBlock(p,b);
+    if(!best||q.distance<best.distance){
+      best={x:q.x,y:q.y,distance:q.distance,type:"block",index:i};
+    }
+  });
+
+  // Selection tolerance in world mm.
+  const tolerance=350/Math.max(scale,0.0001);
+  return best&&best.distance<=tolerance?best:null;
+}
+
+function drawMeasurePoint(pt,label){
+  if(!pt)return;
+  const q=ws(pt.x,pt.y);
+  ctx.save();
+  ctx.strokeStyle="#00a6d6";
+  ctx.fillStyle="#fff";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.arc(q.x,q.y,5,0,Math.PI*2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font="bold 11px Arial";
+  ctx.textAlign="left";
+  ctx.textBaseline="bottom";
+  const text=label;
+  const w=ctx.measureText(text).width+8;
+  ctx.fillStyle="#fff";
+  ctx.fillRect(q.x+7,q.y-19,w,17);
+  ctx.fillStyle="#00a6d6";
+  ctx.fillText(text,q.x+11,q.y-5);
+  ctx.restore();
+}
+
+function measureDistanceBetweenPoints(a,b){
+  return Math.hypot(b.x-a.x,b.y-a.y);
+}
+
+
+function drawSavedMeasurements(){
+  if(!savedMeasurements.length)return;
+
+  savedMeasurements.forEach((m,i)=>{
+    const a=ws(m.x1,m.y1),b=ws(m.x2,m.y2);
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+
+    ctx.save();
+    ctx.strokeStyle="#00a6d6";
+    ctx.lineWidth=1.5;
+    ctx.setLineDash([6,5]);
+    ctx.globalAlpha=.72;
+    ctx.beginPath();
+    ctx.moveTo(a.x,a.y);
+    ctx.lineTo(b.x,b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle="#fff";
+    ctx.strokeStyle="#00a6d6";
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.arc(a.x,a.y,4,0,Math.PI*2);
+    ctx.fill();ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,4,0,Math.PI*2);
+    ctx.fill();ctx.stroke();
+
+    const text=Math.round(m.distance)+" mm";
+    ctx.font="bold 12px Arial";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    const tw=ctx.measureText(text).width+14;
+    ctx.fillStyle="#fff";
+    ctx.globalAlpha=.95;
+    ctx.fillRect(mx-tw/2,my-12,tw,24);
+    ctx.fillStyle="#00a6d6";
+    ctx.fillText(text,mx,my);
+
+    ctx.restore();
+  });
+}
+
+function updateSaveMeasureButton(){
+  const btn=document.getElementById("saveMeasureBtn");
+  if(!btn)return;
+  const ready=!!(measureFirstPoint&&measureSecondPoint&&Number.isFinite(measureResult));
+  btn.disabled=!ready;
+  btn.classList.toggle("active",ready);
+}
+
+function saveCurrentMeasurement(){
+  if(!measureFirstPoint||!measureSecondPoint||!Number.isFinite(measureResult)){
+    setStatus("Kõigepealt vali punkt A ja punkt B");
+    return;
+  }
+
+  pushHistory();
+  savedMeasurements.push({
+    x1:measureFirstPoint.x,
+    y1:measureFirstPoint.y,
+    x2:measureSecondPoint.x,
+    y2:measureSecondPoint.y,
+    distance:measureResult
+  });
+
+  setStatus("Mõõt "+Math.round(measureResult)+" mm salvestatud joonisele");
+
+  // Keep the saved result visible, but prepare Measure Distance for the
+  // next measurement.
+  measureFirstPoint=null;
+  measureSecondPoint=null;
+  measureResult=null;
+  updateSaveMeasureButton();
+  draw();
+}
+
+function drawMeasure(){
+  if(!measureMode||!measureFirstPoint)return;
+  ctx.save();
+
+  drawMeasurePoint(measureFirstPoint,"A");
+
+  if(measureSecondPoint){
+    drawMeasurePoint(measureSecondPoint,"B");
+
+    const a=ws(measureFirstPoint.x,measureFirstPoint.y);
+    const b=ws(measureSecondPoint.x,measureSecondPoint.y);
+
+    ctx.strokeStyle="#00a6d6";
+    ctx.lineWidth=2;
+    ctx.setLineDash([7,5]);
+    ctx.beginPath();
+    ctx.moveTo(a.x,a.y);
+    ctx.lineTo(b.x,b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+    const text=Math.round(measureResult)+" mm";
+    ctx.font="bold 12px Arial";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    const w=ctx.measureText(text).width+16;
+    ctx.fillStyle="#fff";
+    ctx.fillRect(mx-w/2,my-12,w,24);
+    ctx.fillStyle="#00a6d6";
+    ctx.fillText(text,mx,my);
+  }
+
+  ctx.restore();
+}
+
+function startMeasureDistance(){
+  measureMode=true;mode="measure";
+  measureFirstLine=-1;measureSecondLine=-1;measureResult=null;
+  updateSaveMeasureButton();
+  first=null;preview=null;selectedLine=-1;selectedBlock=-1;
+  hideDynamic();
+  lineBtn.classList.remove("active");
+  selectBtn.classList.remove("active");
+  measureBtn.classList.add("active");
+  setStatus("MÕÕDA VAHEMAAD – klõpsa punkt A joonele või ploki servale");
+  draw();
+}
+
+function stopMeasureDistance(){
+  measureMode=false;measureFirstLine=-1;measureSecondLine=-1;measureResult=null;
+  measureBtn.classList.remove("active");
+}
+
+function drawUcsIcon(){
+ const x=28, y=H-28, len=42;
+ ctx.save();
+ ctx.lineWidth=1.5;
+ ctx.strokeStyle=document.body.classList.contains("autocad-mode")?"#fff":"#555";
+ ctx.fillStyle=ctx.strokeStyle;
+ ctx.font="12px Arial";
+ ctx.textAlign="left";
+ ctx.textBaseline="middle";
+ // Origin square
+ ctx.strokeRect(x-5,y-5,10,10);
+ // X axis
+ ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+len,y);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(x+len,y);ctx.lineTo(x+len-6,y-3);ctx.moveTo(x+len,y);ctx.lineTo(x+len-6,y+3);ctx.stroke();
+ ctx.fillText("X",x+len+5,y);
+ // Y axis
+ ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-len);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(x,y-len);ctx.lineTo(x-3,y-len+6);ctx.moveTo(x,y-len);ctx.lineTo(x+3,y-len+6);ctx.stroke();
+ ctx.fillText("Y",x-4,y-len-10);
+ ctx.restore();
+}
+
+
+function drawPdfUnderlay(){
+ if(!pdfPageCanvas || !pdfPageWmm || !pdfPageHmm || !pdfVisible)return;
+ // PDF on päris alusjoonis samas CAD koordinaatsüsteemis.
+ // See joonistatakse ENNE võrku, seinu ja tellinguid.
+ const topLeft=ws(-pdfPageWmm/2,-pdfPageHmm/2);
+ const bottomRight=ws(pdfPageWmm/2,pdfPageHmm/2);
+ const dw=bottomRight.x-topLeft.x;
+ const dh=bottomRight.y-topLeft.y;
+ if(dw<=1 || dh<=1)return;
+ ctx.save();
+ ctx.globalAlpha=pdfOpacity;
+ ctx.imageSmoothingEnabled=true;
+ ctx.drawImage(pdfPageCanvas,topLeft.x,topLeft.y,dw,dh);
+ ctx.restore();
+}
+
+function fitPdfToWorkspace(){
+ if(!pdfPageWmm || !pdfPageHmm || !W || !H)return;
+ const margin=24;
+ const fitScale=Math.min((W-margin*2)/pdfPageWmm,(H-margin*2)/pdfPageHmm);
+ if(!Number.isFinite(fitScale) || fitScale<=0)return;
+ scale=Math.max(.008,Math.min(2.5,fitScale));
+ ox=0;
+ oy=0;
+ draw();
+ setStatus('PDF mahutatud tööalale – PDF on võrgu all');
+}
+
+async function renderPdfPage(pageNumber){
+ if(!pdfDoc)return;
+ const token=++pdfRenderToken;
+ const page=await pdfDoc.getPage(pageNumber);
+ if(token!==pdfRenderToken)return;
+ const base=page.getViewport({scale:1});
+ pdfPageWmm=base.width*25.4/72;
+ pdfPageHmm=base.height*25.4/72;
+ const renderScale=Math.min(3,Math.max(1.5,window.devicePixelRatio||1));
+ const viewport=page.getViewport({scale:renderScale});
+ const c=document.createElement('canvas');
+ c.width=Math.ceil(viewport.width); c.height=Math.ceil(viewport.height);
+ const cctx=c.getContext('2d',{alpha:false});
+ await page.render({canvasContext:cctx,viewport}).promise;
+ if(token!==pdfRenderToken)return;
+ pdfPageCanvas=c;
+ pdfPageNum=pageNumber;
+ document.getElementById('pdfPageInfo').textContent=pdfPageNum+' / '+pdfPageCount;
+ document.getElementById('pdfName').textContent='PDF: '+pdfFileName;
+ document.getElementById('pdfTools').style.display='flex';
+ draw();
+}
+
+async function importPdfFile(file){
+ if(!file)return;
+ if(!window.pdfjsLib){
+   setStatus('PDF-mootor ei ole veel laadinud – proovi uuesti');
+   return;
+ }
+ try{
+   setStatus('PDF laadimine…');
+   const data=await file.arrayBuffer();
+   pdfDoc=await pdfjsLib.getDocument({data}).promise;
+   pdfPageCount=pdfDoc.numPages;
+   pdfFileName=file.name;
+   pdfVisible=true;
+   await renderPdfPage(1);
+   fitPdfToWorkspace();
+   setStatus('PDF lisatud – PDF on võrgu all, saad nüüd otse PDF-i peale joonistada');
+ }catch(err){
+   console.error(err);
+   pdfDoc=null; pdfPageCanvas=null; pdfPageCount=0; pdfPageNum=0;
+   document.getElementById('pdfTools').style.display='none';
+   setStatus('PDF avamine ebaõnnestus');
+   draw();
+ }
+}
+
+const pdfImportBtn=document.getElementById('pdfImportBtn');
+const pdfFileInput=document.getElementById('pdfFileInput');
+const pdfFitBtn=document.getElementById('pdfFitBtn');
+pdfImportBtn.onclick=()=>pdfFileInput.click();
+pdfFileInput.onchange=()=>{
+ const f=pdfFileInput.files && pdfFileInput.files[0];
+ if(f)importPdfFile(f);
+ pdfFileInput.value='';
+};
+document.getElementById('pdfPrev').onclick=()=>{
+ if(pdfDoc && pdfPageNum>1)renderPdfPage(pdfPageNum-1);
+};
+document.getElementById('pdfNext').onclick=()=>{
+ if(pdfDoc && pdfPageNum<pdfPageCount)renderPdfPage(pdfPageNum+1);
+};
+function zoomPdfAt(factor, clientX, clientY){
+ const rect=canvas.getBoundingClientRect();
+ const p={x:clientX-rect.left,y:clientY-rect.top};
+ const before=sw(p.x,p.y);
+ const oldScale=scale;
+ scale=Math.max(.008,Math.min(2.5,scale*factor));
+ const after=sw(p.x,p.y);
+ ox += (after.x-before.x)*scale;
+ oy += (after.y-before.y)*scale;
+ draw();
+}
+pdfFitBtn.onclick=()=>fitPdfToWorkspace();
+document.getElementById('pdfZoomIn').onclick=()=>zoomPdfAt(1.35, W/2, H/2);
+document.getElementById('pdfZoomOut').onclick=()=>zoomPdfAt(1/1.35, W/2, H/2);
+document.getElementById('pdfOpacityBtn').onclick=()=>{
+ pdfOpacity = pdfOpacity===.70 ? .45 : (pdfOpacity===.45 ? .25 : .70);
+ document.getElementById('pdfOpacityBtn').textContent='PDF '+Math.round(pdfOpacity*100)+'%';
+ draw();
+};
+document.getElementById('pdfHideBtn').onclick=()=>{
+ pdfVisible=!pdfVisible;
+ document.getElementById('pdfHideBtn').textContent=pdfVisible?'PEIDA':'NÄITA';
+ draw();
+};
+
+function updateBlockSchedule(){const body=document.getElementById("blockScheduleBody");if(!body)return;const rows=getBlockScheduleRows();if(!rows.length){body.innerHTML='<div class="blockScheduleRow"><span>—</span><span class="num">0</span><span>mm</span><span class="num">0</span></div>';return;}let tc=0,tl=0;body.innerHTML=rows.map(([len,g])=>{tc+=g.count;tl+=g.total;return `<div class="blockScheduleRow"><span>${len} mm</span><span class="num">${g.count}</span><span>mm</span><span class="num">${Math.round(g.total)} mm</span></div>`}).join('')+`<div class="blockScheduleRow blockScheduleTotal"><span>ИТОGO</span><span class="num">${tc}</span><span>mm</span><span class="num">${Math.round(tl)} mm</span></div>`;}
+
+function draw(){
+ updateWallSchedule();
+ updateBlockSchedule();
+ ctx.clearRect(0,0,W,H);
+ ctx.fillStyle="#fff";
+ ctx.fillRect(0,0,W,H);
+ if(pdfDoc && pdfPageCanvas && pdfVisible)drawPdfUnderlay();
+ if(grid)drawGrid();
+ lines.forEach((l,i)=>drawLine(l,allSelected||i===selectedLine));
+ blocks.forEach((b,i)=>drawBlock(b,allSelected||i===selectedBlock));
+
+ // Reaalaja plokkide kalkulaator peab olema plokkide PEAL.
+ drawWallRemaining();
+ drawBlockOutside();
+ drawSavedMeasurements();
+ drawMeasure();
+
+ if(first&&preview)drawPreview();
+ drawUcsIcon();
+}
+
+function drawGrid(){
+ /* Adaptive view grid: keep a readable grid visible even at the default 1:15000 view.
+    Drawing geometry and touch interaction are unchanged. */
+ const ac=document.body.classList.contains("autocad-mode");
+ const targetPx=52;
+ const pxPerMm=Math.max(scale,1e-9);
+ let rawMm=targetPx/pxPerMm;
+ const pow=Math.pow(10,Math.floor(Math.log10(rawMm)));
+ let step=pow;
+ const n=rawMm/pow;
+ if(n>5)step=10*pow;
+ else if(n>2)step=5*pow;
+ else if(n>1)step=2*pow;
+ const major=Math.max(step,1);
+ const majorPx=major*pxPerMm;
+ const minor=major/5;
+ const minorPx=minor*pxPerMm;
+
+ if(minorPx>=8){
+   ctx.strokeStyle=ac?"#303338":"#eeeeee";
+   ctx.lineWidth=1;
+   let x=((W/2+ox)%minorPx+minorPx)%minorPx;
+   for(;x<W;x+=minorPx){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+   let y=((H/2+oy)%minorPx+minorPx)%minorPx;
+   for(;y<H;y+=minorPx){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ }
+
+ if(majorPx>=8){
+   ctx.strokeStyle=ac?"#44474d":"#d1d1d1";
+   ctx.lineWidth=1;
+   let x=((W/2+ox)%majorPx+majorPx)%majorPx;
+   for(;x<W;x+=majorPx){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+   let y=((H/2+oy)%majorPx+majorPx)%majorPx;
+   for(;y<H;y+=majorPx){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ }
+}
+
+function drawLine(l,selected){
+ const a=ws(l.x1,l.y1),b=ws(l.x2,l.y2);
+ const ac=document.body.classList.contains("autocad-mode");
+ ctx.strokeStyle=selected?"#2f9cff":(ac?"#fff":"#000");
+ ctx.lineWidth=selected?4:3;
+ ctx.beginPath();
+ ctx.moveTo(a.x,a.y);
+ ctx.lineTo(b.x,b.y);
+ ctx.stroke();
+}
+
+function drawBlock(b,selected){
+ const c=ws(b.x,b.y),w=732*scale,h=b.length*scale;
+ ctx.save();
+ ctx.translate(c.x,c.y);ctx.rotate(b.angle*Math.PI/180);
+ ctx.fillStyle=selected?"rgba(20,170,75,.32)":"rgba(20,170,75,.15)";
+ ctx.strokeStyle="#18a848";ctx.lineWidth=selected?4:3;
+ ctx.fillRect(-h/2,-w/2,h,w);ctx.strokeRect(-h/2,-w/2,h,w);
+ ctx.fillStyle="#15863b";ctx.font="11px Arial";ctx.textAlign="center";ctx.textBaseline="middle";
+ ctx.fillText(b.length+" × 732",0,0);
+ ctx.restore();
+}
+
+
+
+
+const MIN_WALL_CLEARANCE=300;
+const FIRST_BLOCK_OUTSIDE=BLOCK_WIDTH; // mm: first block starts 732 mm before wall start
+
+
+function blockGeometry(b){
+ const a=b.angle*Math.PI/180;
+ const bx=Math.cos(a),by=Math.sin(a);
+ const nx=-by,ny=bx;
+ const halfL=b.length/2;
+ const halfW=732/2;
+
+ // Four corners of the rotated rectangle.
+ return [
+   {x:b.x+bx*halfL+nx*halfW,y:b.y+by*halfL+ny*halfW},
+   {x:b.x+bx*halfL-nx*halfW,y:b.y+by*halfL-ny*halfW},
+   {x:b.x-bx*halfL-nx*halfW,y:b.y-by*halfL-ny*halfW},
+   {x:b.x-bx*halfL+nx*halfW,y:b.y-by*halfL+ny*halfW}
+ ];
+}
+
+function pointSegmentDistance(px,py,x1,y1,x2,y2){
+ const dx=x2-x1,dy=y2-y1;
+ const d2=dx*dx+dy*dy;
+ if(d2===0)return Math.hypot(px-x1,py-y1);
+ let t=((px-x1)*dx+(py-y1)*dy)/d2;
+ t=Math.max(0,Math.min(1,t));
+ return Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
+}
+
+function blockWallClearance(block,wall){
+ const corners=blockGeometry(block);
+ let minDist=Infinity;
+ corners.forEach(c=>{
+   minDist=Math.min(minDist,
+     pointSegmentDistance(c.x,c.y,wall.x1,wall.y1,wall.x2,wall.y2));
+ });
+ return minDist;
+}
+
+
+
+
+function polygonAxes(poly){
+ const axes=[];
+ for(let i=0;i<poly.length;i++){
+   const a=poly[i],b=poly[(i+1)%poly.length];
+   const ex=b.x-a.x,ey=b.y-a.y;
+   const len=Math.hypot(ex,ey)||1;
+   axes.push({x:-ey/len,y:ex/len});
+ }
+ return axes;
+}
+
+function projectPolygon(poly,axis){
+ let min=Infinity,max=-Infinity;
+ poly.forEach(p=>{
+   const v=p.x*axis.x+p.y*axis.y;
+   min=Math.min(min,v);
+   max=Math.max(max,v);
+ });
+ return {min,max};
+}
+
+function rotatedBlocksOverlap(a,b){
+ const pa=blockGeometry(a);
+ const pb=blockGeometry(b);
+ const axes=[...polygonAxes(pa),...polygonAxes(pb)];
+
+ for(const axis of axes){
+   const A=projectPolygon(pa,axis);
+   const B=projectPolygon(pb,axis);
+
+   // Touching edges is allowed. Only real penetration is forbidden.
+   const overlap=Math.min(A.max,B.max)-Math.max(A.min,B.min);
+   if(overlap<=0.5)return false;
+ }
+ return true;
+}
+
+function blockOverlapsAny(block,ignoreIndex=-1){
+ for(let i=0;i<blocks.length;i++){
+   if(i===ignoreIndex)continue;
+   if(rotatedBlocksOverlap(block,blocks[i]))return true;
+ }
+ return false;
+}
+
+
+// Manual placement: blocks may meet only end-to-end. When a dragged block
+// is brought close to the end of another parallel block, snap the two ends
+// exactly together. Side-by-side or overlapping placement is never allowed.
+function snapBlockEndToEnd(block,ignoreIndex=-1,threshold=260){
+  if(!blocks.length)return false;
+
+  const a=block.angle*Math.PI/180;
+  const ux=Math.cos(a), uy=Math.sin(a);
+  const blockStart={x:block.x-ux*block.length/2,y:block.y-uy*block.length/2};
+  const blockEnd={x:block.x+ux*block.length/2,y:block.y+uy*block.length/2};
+  let best=null;
+
+  for(let i=0;i<blocks.length;i++){
+    if(i===ignoreIndex)continue;
+    const other=blocks[i];
+    const oa=other.angle*Math.PI/180;
+    const oux=Math.cos(oa), ouy=Math.sin(oa);
+
+    // End-to-end connection is intended for parallel blocks.
+    const parallel=Math.abs(ux*oux+uy*ouy);
+    if(parallel<0.995)continue;
+
+    const otherStart={x:other.x-oux*other.length/2,y:other.y-ouy*other.length/2};
+    const otherEnd={x:other.x+oux*other.length/2,y:other.y+ouy*other.length/2};
+
+    const candidates=[
+      {p:blockStart,t:otherEnd,sign:1},
+      {p:blockEnd,t:otherStart,sign:-1}
+    ];
+
+    for(const c of candidates){
+      const d=Math.hypot(c.p.x-c.t.x,c.p.y-c.t.y);
+      if(d<=threshold && (!best||d<best.d)){
+        const angle=c.sign>0 ? other.angle : other.angle+180;
+        const r=angle*Math.PI/180;
+        const bux=Math.cos(r), buy=Math.sin(r);
+        // c.sign=1 => block start touches other end.
+        // c.sign=-1 => block end touches other start.
+        const center=c.sign>0
+          ? {x:c.t.x+bux*block.length/2,y:c.t.y+buy*block.length/2}
+          : {x:c.t.x-bux*block.length/2,y:c.t.y-buy*block.length/2};
+        best={d,center,angle};
+      }
+    }
+  }
+
+  if(!best)return false;
+  block.x=best.center.x;
+  block.y=best.center.y;
+  block.angle=((best.angle%360)+360)%360;
+  return true;
+}
+
+function snapBlockToWallEndIfNear(block){
+  // Every block size (3070, 2570, 2070, 1570, 1400, 1090, 730)
+  // uses the same end-to-end connection logic.
+  if(blocks.length<2)return false;
+
+  let best=null;
+
+  blocks.forEach((other)=>{
+    if(other===block)return;
+
+    const oa=other.angle*Math.PI/180;
+    const ox=Math.cos(oa), oy=Math.sin(oa);
+
+    // Existing block endpoints.
+    const otherStart={
+      x:other.x-ox*other.length/2,
+      y:other.y-oy*other.length/2
+    };
+    const otherEnd={
+      x:other.x+ox*other.length/2,
+      y:other.y+oy*other.length/2
+    };
+
+    // Keep the new block in the same direction as the existing block.
+    // We test both possible end-to-end connections.
+    const candidates=[
+      {
+        target:otherEnd,
+        angle:other.angle,
+        // New block START touches existing block END.
+        x:otherEnd.x+ox*block.length/2,
+        y:otherEnd.y+oy*block.length/2
+      },
+      {
+        target:otherStart,
+        angle:other.angle,
+        // New block END touches existing block START.
+        x:otherStart.x-ox*block.length/2,
+        y:otherStart.y-oy*block.length/2
+      }
+    ];
+
+    candidates.forEach(c=>{
+      const dist=Math.hypot(block.x-c.x,block.y-c.y);
+      if(!best||dist<best.dist){
+        best={dist,x:c.x,y:c.y,angle:c.angle};
+      }
+    });
+  });
+
+  // A reasonably generous magnetic range makes every block size
+  // easy to connect, without changing normal free placement.
+  const snapRange=1200;
+  if(!best||best.dist>snapRange)return false;
+
+  block.x=best.x;
+  block.y=best.y;
+  block.angle=best.angle;
+
+  return true;
+}
+
+function nearestWallSegmentToPoint(x,y,maxDistance=1800){
+ let best=null;
+
+ lines.forEach((wall,index)=>{
+   const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+   const L=Math.hypot(dx,dy);
+   if(L<1)return;
+
+   const ux=dx/L,uy=dy/L;
+   const nx=-uy,ny=ux;
+
+   let t=((x-wall.x1)*ux+(y-wall.y1)*uy);
+   t=Math.max(0,Math.min(L,t));
+
+   const px=wall.x1+ux*t;
+   const py=wall.y1+uy*t;
+   const dist=Math.hypot(x-px,y-py);
+
+   if(dist<=maxDistance && (!best||dist<best.distance)){
+     best={wall,index,L,ux,uy,nx,ny,t,px,py,dist};
+   }
+ });
+
+ return best;
+}
+
+
+function blockWallIndex(block){
+  return Number.isInteger(block._wallIndex) ? block._wallIndex : -1;
+}
+
+
+function segmentSegmentDistance(a,b,c,d){
+  // Distance between two line segments.
+  function orient(p,q,r){return (q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x);}
+  function onSeg(p,q,r){
+    return Math.min(p.x,r.x)-1e-9<=q.x && q.x<=Math.max(p.x,r.x)+1e-9 &&
+           Math.min(p.y,r.y)-1e-9<=q.y && q.y<=Math.max(p.y,r.y)+1e-9;
+  }
+  const o1=orient(a,b,c),o2=orient(a,b,d),o3=orient(c,d,a),o4=orient(c,d,b);
+  const cross=(o1>0)!==(o2>0) && (o3>0)!==(o4>0);
+  if(cross)return 0;
+  let v=Math.min(
+    pointSegmentDistance(a.x,a.y,c.x,c.y,d.x,d.y),
+    pointSegmentDistance(b.x,b.y,c.x,c.y,d.x,d.y),
+    pointSegmentDistance(c.x,c.y,a.x,a.y,b.x,b.y),
+    pointSegmentDistance(d.x,d.y,a.x,a.y,b.x,b.y)
+  );
+  return v;
+}
+
+function blockWallClearanceExact(block,wall){
+  const poly=blockGeometry(block);
+  let min=Infinity;
+  for(let i=0;i<poly.length;i++){
+    const a=poly[i],b=poly[(i+1)%poly.length];
+    min=Math.min(min,segmentSegmentDistance(a,b,
+      {x:wall.x1,y:wall.y1},{x:wall.x2,y:wall.y2}));
+  }
+  return min;
+}
+
+function nearestTooCloseWall(block){
+  let best=null;
+  lines.forEach((wall,index)=>{
+    const d=blockWallClearanceExact(block,wall);
+    if(d<MIN_WALL_CLEARANCE && (!best || d<best.distance)){
+      best={wall,index,distance:d};
+    }
+  });
+  return best;
+}
+
+function enforceMinimumWallClearance(block){
+  // A block may be anywhere around the drawing, but it can NEVER enter
+  // the 300 mm safety zone next to a wall.
+  const bad=nearestTooCloseWall(block);
+  if(!bad)return false;
+
+  // Once inside the 300 mm zone, keep the block orientation.
+  // Fixed vertical blocks are only attached to a parallel wall.
+  // If the nearest wall is perpendicular, push the block away from it
+  // without rotating it.
+  if(blockHasFixedOrientation(block)){
+    const wall=bad.wall;
+    const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+    const L=Math.hypot(dx,dy)||1;
+    const ux=dx/L,uy=dy/L,nx=-uy,ny=ux;
+    const px=wall.x1+ux*Math.max(0,Math.min(L,
+      (block.x-wall.x1)*ux+(block.y-wall.y1)*uy));
+    const py=wall.y1+uy*Math.max(0,Math.min(L,
+      (block.x-wall.x1)*ux+(block.y-wall.y1)*uy));
+    const side=((block.x-px)*nx+(block.y-py)*ny)>=0?1:-1;
+    const bx=Math.cos(block.angle*Math.PI/180),by=Math.sin(block.angle*Math.PI/180);
+    const bnx=-by,bny=bx;
+    const halfNormal=
+      Math.abs(bx*nx+by*ny)*(block.length/2)+
+      Math.abs(bnx*nx+bny*ny)*(732/2);
+    const centerOffset=MIN_WALL_CLEARANCE+halfNormal;
+    block.x=px+nx*side*centerOffset;
+    block.y=py+ny*side*centerOffset;
+  }else{
+    snapBlockToWall(block,block.x,block.y,false);
+  }
+  return true;
+}
+
+function snapBlockToAssignedWall(block,x,y){
+  const wi=blockWallIndex(block);
+  if(wi>=0 && lines[wi]){
+    const wall=lines[wi];
+    const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+    const L=Math.hypot(dx,dy);
+    if(L<1)return false;
+
+    const ux=dx/L,uy=dy/L,nx=-uy,ny=ux;
+    let t=((x-wall.x1)*ux+(y-wall.y1)*uy);
+    t=Math.max(0,Math.min(L,t));
+
+    const px=wall.x1+ux*t,py=wall.y1+uy*t;
+    const side=((x-px)*nx+(y-py)*ny)>=0?1:-1;
+    const centerOffset=MIN_WALL_CLEARANCE+732/2;
+
+    if(!blockHasFixedOrientation(block)){
+      block.angle=Math.atan2(uy,ux)*180/Math.PI;
+    }
+
+    if(blockHasFixedOrientation(block)){
+      // Keep the vertical/horizontal block orientation stable while
+      // placing its centre at the correct 300 mm clearance.
+      setBlockAtWallClearance(block,{wall,index:wi,L,ux,uy,nx,ny,t,px,py},x,y);
+    }else{
+      block.x=px+nx*side*centerOffset;
+      block.y=py+ny*side*centerOffset;
+      block._wallIndex=wi;
+    }
+    return true;
+  }
+  return snapBlockToWall(block,x,y,false);
+}
+
+
+function blockHasFixedOrientation(block){
+  return block && block._orientationFixed===true;
+}
+
+function nearestParallelWallForBlock(block,x,y){
+  let best=null;
+  const a=block.angle*Math.PI/180;
+  const bx=Math.cos(a),by=Math.sin(a);
+
+  lines.forEach((wall,index)=>{
+    const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+    const L=Math.hypot(dx,dy);
+    if(L<1)return;
+    const ux=dx/L,uy=dy/L;
+    // Fixed-orientation block may only attach to a wall with the same direction.
+    const parallel=Math.abs(bx*ux+by*uy);
+    if(parallel<0.94)return;
+
+    const nx=-uy,ny=ux;
+    let t=((x-wall.x1)*ux+(y-wall.y1)*uy);
+    t=Math.max(0,Math.min(L,t));
+    const px=wall.x1+ux*t,py=wall.y1+uy*t;
+    const dist=Math.hypot(x-px,y-py);
+
+    if(!best||dist<best.distance){
+      best={wall,index,L,ux,uy,nx,ny,t,px,py,dist};
+    }
+  });
+  return best;
+}
+
+function setBlockAtWallClearance(block,hit,x,y){
+  const wall=hit.wall;
+  const bx=Math.cos(block.angle*Math.PI/180);
+  const by=Math.sin(block.angle*Math.PI/180);
+  const bnx=-by,bny=bx;
+
+  // Exact half extent of the rotated block in the wall-normal direction.
+  const halfNormal=
+    Math.abs(bx*hit.nx+by*hit.ny)*(block.length/2)+
+    Math.abs(bnx*hit.nx+bny*hit.ny)*(732/2);
+
+  const centerOffset=MIN_WALL_CLEARANCE+halfNormal;
+  const side=((x-hit.px)*hit.nx+(y-hit.py)*hit.ny)>=0?1:-1;
+
+  let along=hit.t;
+  block.x=wall.x1+hit.ux*along+hit.nx*side*centerOffset;
+  block.y=wall.y1+hit.uy*along+hit.ny*side*centerOffset;
+  block._wallIndex=hit.index;
+  lockWall(hit.index);
+}
+
+function snapBlockToWall(block,x,y,isFirst=false){
+ // Fixed-orientation blocks (especially the vertical 90° blocks)
+ // NEVER rotate to another orientation. They only attach to a parallel wall.
+ const hit=blockHasFixedOrientation(block)
+   ? nearestParallelWallForBlock(block,x,y)
+   : nearestWallSegmentToPoint(x,y,Infinity);
+
+ if(!hit)return false;
+
+ const wall=hit.wall;
+
+ if(!blockHasFixedOrientation(block)){
+   // Normal horizontal blocks keep the established wall-following behavior.
+   block.angle=Math.atan2(hit.uy,hit.ux)*180/Math.PI;
+ }
+
+ const side=(x-hit.px)*hit.nx+(y-hit.py)*hit.ny>=0?1:-1;
+ const centerOffset=MIN_WALL_CLEARANCE+732/2;
+
+ let along=hit.t;
+ if(isFirst && !block._hasWallBase){
+   along=-FIRST_BLOCK_OUTSIDE+block.length/2;
+   block._hasWallBase=true;
+ }
+
+ // For a fixed vertical block, use its own orientation but the same
+ // 300 mm wall-clearance rule.
+ if(blockHasFixedOrientation(block)){
+   setBlockAtWallClearance(block,hit,x,y);
+   if(isFirst){
+     const a=block.angle*Math.PI/180;
+     const ux=Math.cos(a),uy=Math.sin(a);
+     block.x=wall.x1+hit.ux*(-FIRST_BLOCK_OUTSIDE+block.length/2)+
+             hit.nx*side*(MIN_WALL_CLEARANCE+
+             Math.abs((-uy)*hit.nx+ux*hit.ny)*(732/2)+
+             Math.abs(ux*hit.nx+uy*hit.ny)*(block.length/2));
+     block.y=wall.y1+hit.uy*(-FIRST_BLOCK_OUTSIDE+block.length/2)+
+             hit.ny*side*(MIN_WALL_CLEARANCE+
+             Math.abs((-uy)*hit.nx+ux*hit.ny)*(732/2)+
+             Math.abs(ux*hit.nx+uy*hit.ny)*(block.length/2));
+   }
+ }else{
+   block.x=wall.x1+hit.ux*along+hit.nx*side*centerOffset;
+   block.y=wall.y1+hit.uy*along+hit.ny*side*centerOffset;
+   block._wallIndex=hit.index;
+   lockWall(hit.index);
+ }
+
+ return true;
+}
+
+function snapExistingBlockToNearestWall(block){
+ const hit=nearestWallSegmentToPoint(block.x,block.y,1800);
+ if(!hit)return false;
+
+ // Only snap when the block is being placed close to the building.
+ return snapBlockToWall(block,block.x,block.y,false);
+}
+
+function snapFirstBlockToWallBase(b){
+ if(!lines.length)return false;
+
+ let best=null;
+
+ if(blockHasFixedOrientation(b)){
+   best=nearestParallelWallForBlock(b,b.x,b.y);
+   if(!best)return false;
+ }else{
+   lines.forEach(wall=>{
+     const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+     const L=Math.hypot(dx,dy)||1;
+     const ux=dx/L,uy=dy/L,nx=-uy,ny=ux;
+
+     const along=(b.x-wall.x1)*ux+(b.y-wall.y1)*uy;
+     const side=(b.x-wall.x1)*nx+(b.y-wall.y1)*ny;
+
+     const score=Math.abs(side)+Math.max(0,-along)+Math.max(0,along-L);
+     if(!best||score<best.score)best={wall,ux,uy,nx,ny,L,along,side,score};
+   });
+ }
+
+ if(!best)return false;
+
+ // Only apply this base to the first block on the selected wall.
+ const existing=blocks.some(other=>{
+   if(other===b)return false;
+   const dx=best.wall.x2-best.wall.x1,dy=best.wall.y2-best.wall.y1;
+   const L=Math.hypot(dx,dy)||1;
+   const ux=dx/L,uy=dy/L,nx=-uy,ny=ux;
+   const oa=other.angle*Math.PI/180;
+   const parallel=Math.abs(Math.cos(oa)*ux+Math.sin(oa)*uy)>0.94;
+   const side=Math.abs((other.x-best.wall.x1)*nx+(other.y-best.wall.y1)*ny);
+   return parallel && side<1100;
+ });
+ if(existing)return false;
+
+ if(!blockHasFixedOrientation(b)){
+   b.angle=Math.atan2(best.uy,best.ux)*180/Math.PI;
+ }
+
+ const sideSign=(best.side===undefined ? 1 : (best.side>=0?1:-1));
+ const along=-FIRST_BLOCK_OUTSIDE+b.length/2;
+ const a=b.angle*Math.PI/180;
+ const bx=Math.cos(a),by=Math.sin(a),bnx=-by,bny=bx;
+ const halfNormal=
+   Math.abs(bx*best.nx+by*best.ny)*(b.length/2)+
+   Math.abs(bnx*best.nx+bny*best.ny)*(732/2);
+ const centerOffset=MIN_WALL_CLEARANCE+halfNormal;
+
+ b.x=best.wall.x1+best.ux*along+best.nx*sideSign*centerOffset;
+ b.y=best.wall.y1+best.uy*along+best.ny*sideSign*centerOffset;
+ b._wallIndex=lines.indexOf(best.wall);
+ b._hasWallBase=true;
+ lockWall(b._wallIndex);
+
+ return true;
+}
+
+function nearestWallForBlock(b){
+ let best=null;
+ let bestDist=Infinity;
+ lines.forEach((wall,i)=>{
+   const d=blockWallClearance(b,wall);
+   if(d<bestDist){
+     bestDist=d;
+     best={wall,index:i,distance:d};
+   }
+ });
+ return best;
+}
+
+function getWallCoverage(wall){
+ const wx=wall.x2-wall.x1,wy=wall.y2-wall.y1;
+ const L=Math.hypot(wx,wy);
+ if(L<1)return null;
+ const ux=wx/L,uy=wy/L,nx=-uy,ny=ux;
+ const intervals=[];
+
+ blocks.forEach(b=>{
+   const a=b.angle*Math.PI/180;
+   const bx=Math.cos(a),by=Math.sin(a);
+   if(Math.abs(bx*ux+by*uy)<0.94)return;
+
+   // Block center must be close enough to the wall.
+   const side=Math.abs((b.x-wall.x1)*nx+(b.y-wall.y1)*ny);
+   if(side>1500)return;
+
+   const half=b.length/2;
+   const p1={x:b.x-bx*half,y:b.y-by*half};
+   const p2={x:b.x+bx*half,y:b.y+by*half};
+   const s1=(p1.x-wall.x1)*ux+(p1.y-wall.y1)*uy;
+   const s2=(p2.x-wall.x1)*ux+(p2.y-wall.y1)*uy;
+   const a1=Math.max(0,Math.min(s1,s2));
+   const a2=Math.min(L,Math.max(s1,s2));
+   if(a2>a1)intervals.push([a1,a2]);
+ });
+
+ intervals.sort((a,b)=>a[0]-b[0]);
+ const merged=[];
+ intervals.forEach(iv=>{
+   if(!merged.length||iv[0]>merged[merged.length-1][1]){
+     merged.push(iv.slice());
+   }else{
+     merged[merged.length-1][1]=Math.max(merged[merged.length-1][1],iv[1]);
+   }
+ });
+ return {L,ux,uy,nx,ny,merged};
+}
+
+
+function getWallBlockSummary(wall, wallIndex=-1){
+ const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+ const L=Math.hypot(dx,dy);
+ if(L<1)return null;
+
+ const ux=dx/L,uy=dy/L;
+ const nx=-uy,ny=ux;
+ const row=[];
+
+ // IMPORTANT: the calculator is geometric and independent for every wall.
+ // Do not trust a stale _wallIndex. A block belongs to this wall only when
+ // its long axis is parallel to the wall and the block is physically close
+ // to that wall.
+ blocks.forEach(b=>{
+   const a=b.angle*Math.PI/180;
+   const bx=Math.cos(a),by=Math.sin(a);
+
+   const parallel=Math.abs(bx*ux+by*uy);
+   if(parallel<0.94)return;
+
+   const side=Math.abs((b.x-wall.x1)*nx+(b.y-wall.y1)*ny);
+
+   // Exact distance from the block rectangle to this wall.
+   const clearance=blockWallClearanceExact(b,wall);
+   if(clearance>1200)return;
+
+   const half=b.length/2;
+   const start=(b.x-bx*half-wall.x1)*ux+
+              (b.y-by*half-wall.y1)*uy;
+   const finish=(b.x+bx*half-wall.x1)*ux+
+                (b.y+by*half-wall.y1)*uy;
+
+   row.push({
+     start:Math.min(start,finish),
+     end:Math.max(start,finish),
+     length:b.length,
+     block:b
+   });
+ });
+
+ if(!row.length)return null;
+ row.sort((a,b)=>a.start-b.start);
+
+ const totalBlocks=Math.round(row.reduce((sum,b)=>sum+b.length,0));
+ const firstStart=Math.round(Math.min(...row.map(b=>b.start)));
+ const lastEnd=Math.round(Math.max(...row.map(b=>b.end)));
+
+ return {
+   L,
+   totalBlocks,
+   firstStart,
+   lastEnd,
+   row,
+   ux,uy,nx,ny
+ };
+}
+
+function drawWallRemaining(){
+  // Näitame iga seina lõpus ainult tegelikku vaba vahet.
+  // Kui viimane plokk ei mahu, seda plokki ei paigaldata.
+  lines.forEach((wall,wallIndex)=>{
+    const d=getWallBlockSummary(wall,wallIndex);
+    if(!d || !d.row || !d.row.length)return;
+
+    const {L,ux,uy,nx,ny}=d;
+
+    const startDelta=Math.round(d.firstStart);
+    const lastEnd=d.lastEnd;
+    const endGap=Math.max(0,Math.round(L-lastEnd));
+    const endOverhang=Math.max(0,Math.round(lastEnd-L));
+
+    const avgSide=d.row.reduce((sum,r)=>{
+      return sum+(r.block.x-wall.x1)*nx+(r.block.y-wall.y1)*ny;
+    },0)/d.row.length;
+    const sideSign=avgSide>=0 ? 1 : -1;
+
+    const normalGap=800;
+    const alongGap=600;
+
+    const drawCornerValue=(x,y,value,uxC,uyC,labelMode="overhang")=>{
+      if(Math.abs(value)<1)return;
+
+      const px=x+nx*sideSign*normalGap+uxC*alongGap;
+      const py=y+ny*sideSign*normalGap+uyC*alongGap;
+
+      drawOrangeDimensionText(
+        px,py,
+        labelMode==="gap" ? value+" mm" :
+          (value>0?"+":"")+value+" mm",
+        uxC,uyC
+      );
+    };
+
+    // Algus: näita ainult tegelikku alguse üleulatust.
+    drawCornerValue(
+      wall.x1,wall.y1,
+      startDelta,
+      ux,uy,
+      "overhang"
+    );
+
+    // Lõpp:
+    // Kui viimane plokk ei mahu, näitame järelejäänud vaba vahet.
+    // Kui plokk ulatub üle, näitame üleulatust.
+    if(endGap>0){
+      drawCornerValue(
+        wall.x2,wall.y2,
+        endGap,
+        -ux,-uy,
+        "gap"
+      );
+    }else if(endOverhang>0){
+      drawCornerValue(
+        wall.x2,wall.y2,
+        endOverhang,
+        -ux,-uy,
+        "overhang"
+      );
+    }
+  });
+}
+
+
+
+function wallLength(wall){
+ return Math.hypot(wall.x2-wall.x1,wall.y2-wall.y1);
+}
+
+function drawOrangeDimensionText(x,y,text,ux,uy){
+ let angle=Math.atan2(uy,ux);
+ if(angle>Math.PI/2 || angle<-Math.PI/2) angle+=Math.PI;
+
+ const gapPx=34;
+ const nx=-uy,ny=ux;
+ const base=ws(x,y);
+ const px=base.x+nx*gapPx;
+ const py=base.y+ny*gapPx;
+
+ ctx.save();
+ ctx.translate(px,py);
+ ctx.rotate(angle);
+ ctx.font="bold 11px Arial";
+ ctx.textAlign="center";
+ ctx.textBaseline="middle";
+
+ const w=ctx.measureText(text).width+10;
+ ctx.fillStyle="#fff";
+ ctx.fillRect(-w/2,-9,w,18);
+
+ ctx.fillStyle="#f57c00";
+ ctx.fillText(text,0,0);
+ ctx.restore();
+}
+
+
+function drawBlockOutside(){
+}
+
+function wallLength(wall){
+ return Math.hypot(wall.x2-wall.x1,wall.y2-wall.y1);
+}
+
+
+function drawBlockOutside(){
+  // Intentionally empty: no blue/red explanatory text is drawn on the plan.
+  // The orange dimension line is the single real-time calculator.
+}
+
+
+
+function nearestLineEndpoint(p, maxPx=14){
+  let best=null;
+  const maxWorld=maxPx/Math.max(scale,0.0001);
+
+  lines.forEach((l,i)=>{
+    const pts=[
+      {x:l.x1,y:l.y1,end:1},
+      {x:l.x2,y:l.y2,end:2}
+    ];
+    pts.forEach(pt=>{
+      const d=Math.hypot(p.x-pt.x,p.y-pt.y);
+      if(d<=maxWorld && (!best||d<best.dist)){
+        best={x:pt.x,y:pt.y,lineIndex:i,end:pt.end,dist:d};
+      }
+    });
+  });
+  return best;
+}
+
+function endpointSnapPoint(p){
+  return nearestLineEndpoint(p,16);
+}
+
+function lineIntersection(a,b,c,d){
+  const r={x:b.x-a.x,y:b.y-a.y};
+  const s={x:d.x-c.x,y:d.y-c.y};
+  const den=r.x*s.y-r.y*s.x;
+  if(Math.abs(den)<1e-9)return null;
+  const q={x:c.x-a.x,y:c.y-a.y};
+  const t=(q.x*s.y-q.y*s.x)/den;
+  const u=(q.x*r.y-q.y*r.x)/den;
+  if(u<-1e-6 || u>1.000001)return null;
+  return {x:a.x+t*r.x,y:a.y+t*r.y,t};
+}
+function angleDiff(a,b){
+  let d=Math.abs(((a-b+180)%360)-180);
+  return Math.min(d,360-d);
+}
+function perpendicularIntersectionSnap(p){
+  if(!first)return null;
+  let A;
+  if(previewLineAngle!==null) A=previewLineAngle;
+  else if(dynAngleManual && dynAngle && dynAngle.value!==""){
+    A=Number(String(dynAngle.value).replace(",","."));
+    if(!Number.isFinite(A))A=directionFromMouseFree();
+  }else A=directionFromMouseFree();
+
+  const start={x:first.x,y:first.y};
+  const far={x:start.x+Math.cos(A*Math.PI/180)*1000000,
+             y:start.y+Math.sin(A*Math.PI/180)*1000000};
+  let best=null;
+
+  lines.forEach((l,i)=>{
+    if(editLineIndex===i && editMode!=="draw")return;
+    const wa=Math.atan2(l.y2-l.y1,l.x2-l.x1)*180/Math.PI;
+    if(Math.abs(angleDiff(A,wa)-90)>2)return;
+
+    const hit=lineIntersection(start,far,{x:l.x1,y:l.y1},{x:l.x2,y:l.y2});
+    if(!hit || hit.t<0)return;
+
+    const d=Math.hypot(hit.x-p.x,hit.y-p.y);
+    const tol=Math.max(180,700/Math.max(scale,0.01));
+    if(d<=tol && (!best||d<best.distance))
+      best={x:hit.x,y:hit.y,distance:d,lineIndex:i};
+  });
+  return best;
+}
+function smartEndpointSnap(p){
+  return perpendicularIntersectionSnap(p) ||
+         (endpointSnapPoint(p)?{x:endpointSnapPoint(p).x,y:endpointSnapPoint(p).y,smart:false}:null);
+}
+
+function drawPreview(){
+ if(!first||!preview)return;
+
+ const a=ws(first.x,first.y);
+
+ // preview is already calculated from the mouse position.
+ // Keep the line in the exact mouse direction; ORTHO only applies
+ // when the ORTHO toggle is enabled.
+ ctx.save();
+ ctx.setLineDash([8,6]);
+ ctx.strokeStyle="#1769aa";
+ ctx.lineWidth=2;
+ ctx.beginPath();
+ ctx.moveTo(a.x,a.y);
+ ctx.lineTo(preview.x,preview.y);
+ ctx.stroke();
+ ctx.restore();
+
+ // Exact start point / crosshair.
+ ctx.save();
+ ctx.strokeStyle="#1769aa";
+ ctx.lineWidth=1.5;
+ ctx.beginPath();
+ ctx.moveTo(a.x-7,a.y);ctx.lineTo(a.x+7,a.y);
+ ctx.moveTo(a.x,a.y-7);ctx.lineTo(a.x,a.y+7);
+ ctx.stroke();
+ ctx.beginPath();
+ ctx.arc(a.x,a.y,4,0,Math.PI*2);
+ ctx.stroke();
+ ctx.restore();
+
+ let q=sw(preview.x,preview.y);
+ const snap=smartEndpointSnap(q);
+ if(snap){
+   q={x:snap.x,y:snap.y};
+   const sp=ws(snap.x,snap.y);
+   ctx.save();
+   ctx.strokeStyle="#1769aa";
+   ctx.lineWidth=2;
+   ctx.setLineDash([]);
+   ctx.beginPath();
+   ctx.rect(sp.x-5,sp.y-5,10,10);
+   ctx.stroke();
+   ctx.restore();
+ }
+ const L=Math.round(Math.hypot(q.x-first.x,q.y-first.y));
+ let A=Math.round(Math.atan2(q.y-first.y,q.x-first.x)*180/Math.PI);
+ if(A<0)A+=360;
+
+ ctx.save();
+ ctx.fillStyle="#1769aa";
+ ctx.font="bold 12px Arial";
+ ctx.textAlign="left";
+ ctx.textBaseline="bottom";
+ ctx.fillText(L+" mm < "+A+"°",preview.x+10,preview.y-8);
+ ctx.restore();
+}
+
+function orthoPoint(a,b){
+ if(!ortho)return b;
+ return Math.abs(b.x-a.x)>=Math.abs(b.y-a.y)
+  ? {x:b.x,y:a.y}
+  : {x:a.x,y:b.y};
+}
+
+function showDynamic(x,y,length,angle){
+ dyn.style.display="block";dynAngleManual=false;
+ const r=canvas.getBoundingClientRect();
+ const vw=window.innerWidth||document.documentElement.clientWidth;
+ const vh=window.innerHeight||document.documentElement.clientHeight;
+ dyn.style.left=Math.max(6,Math.min(r.left+x+12,vw-190))+"px";
+ dyn.style.top=Math.max(6,Math.min(r.top+y+12,vh-92))+"px";
+ dynLength.value=length ?? "";
+ if(dynAngleDisplay)dynAngleDisplay.textContent=Math.round(Number(angle)||0)+"°";
+}
+function moveDynamic(x,y){
+ if(dyn.style.display==="none")return;
+ const r=canvas.getBoundingClientRect();const vw=window.innerWidth||document.documentElement.clientWidth;const vh=window.innerHeight||document.documentElement.clientHeight;
+ dyn.style.left=Math.max(6,Math.min(r.left+x+12,vw-190))+"px";
+ dyn.style.top=Math.max(6,Math.min(r.top+y+12,vh-92))+"px";
+}
+function hideDynamic(){dyn.style.display="none"}
+
+function updateDynamicFromMouse(q){
+ if(!first)return;
+ const L=Math.round(Math.hypot(q.x-first.x,q.y-first.y));
+ let A=Math.round(Math.atan2(q.y-first.y,q.x-first.x)*180/Math.PI);
+ if(A<0)A+=360;
+
+ // Length follows the cursor. Angle also follows the cursor until the user
+ // explicitly types an angle. This prevents a previous "0°" value from
+ // forcing every Enter-created line to the right.
+ if(document.activeElement!==dynLength){
+   dynLength.value=L;
+ }
+ if(dynAngleDisplay)dynAngleDisplay.textContent=A+"°";
+}
+
+function directionFromMouse(){
+ if(!first)return 0;
+
+ // Determine direction from the ACTUAL mouse position relative to the
+ // current start point. Do not use the previously calculated preview here;
+ // that could contain an old snapped endpoint and make LEFT become RIGHT.
+ const startScreen=ws(first.x,first.y);
+ const mx=lastMouse.x-startScreen.x;
+ const my=lastMouse.y-startScreen.y;
+
+ if(Math.abs(mx)<2 && Math.abs(my)<2)return 0;
+
+ if(ortho){
+   // Screen X: right = 0°, left = 180°
+   // Screen Y: down = 90°, up = 270°
+   if(Math.abs(mx)>=Math.abs(my)){
+     return mx>=0 ? 0 : 180;
+   }
+   return my>=0 ? 90 : 270;
+ }
+
+ const q=sw(lastMouse.x,lastMouse.y);
+ let a=Math.atan2(q.y-first.y,q.x-first.x)*180/Math.PI;
+ if(a<0)a+=360;
+ return a;
+}
+
+function directionFromMouseFree(){
+ if(!first)return 0;
+ const startScreen=ws(first.x,first.y);
+ const dx=lastMouse.x-startScreen.x;
+ const dy=lastMouse.y-startScreen.y;
+ if(Math.abs(dx)<2 && Math.abs(dy)<2)return 0;
+
+ // Canvas screen coordinates: right=0°, down=90°, left=180°, up=270°.
+ let a=Math.atan2(dy,dx)*180/Math.PI;
+ if(a<0)a+=360;
+ return a;
+}
+
+function finishLineByLength(L,A){
+ if(!first||!Number.isFinite(L)||L<=0)return false;
+
+ const start={x:first.x,y:first.y};
+ const r=A*Math.PI/180;
+ const end={
+   x:start.x+L*Math.cos(r),
+   y:start.y+L*Math.sin(r)
+ };
+
+ pushHistory();
+ lines.push({x1:start.x,y1:start.y,x2:end.x,y2:end.y});
+ selectedLine=lines.length-1;
+ selectedBlock=-1;
+
+ // Joon on NÜÜD LÕPETATUD.
+ // Uut joont ei tohi automaatselt eelmise joone lõpust jätkata.
+ // Kasutaja peab uue joone jaoks ise alguspunkti klõpsama.
+ first=null;
+ preview=null;
+ previewLineAngle=null;
+ previewLineLength=null;
+ lockedSnapPoint=null;
+ rotatingLineAngle=false;
+ editMode="draw";
+ editLineIndex=-1;
+ hideDynamic();
+
+ updateLineFields();
+ setStatus("Joon lõpetatud – uue joone jaoks klõpsa uus alguspunkt");
+ draw();
+ return true;
+}
+
+function applyDrawInput(){
+ if(!first)return false;
+ const L=Number(String(dynLength.value).replace(",","."));
+ if(!Number.isFinite(L)||L<=0)return false;
+
+ let A;
+ // When the phone swipe already locked a direction, never replace it with
+ // a snap direction from the old finger position.
+ if(previewLineAngle===null){
+   const mouseWorld=sw(lastMouse.x,lastMouse.y);
+   const endpoint=smartEndpointSnap(mouseWorld);
+   if(endpoint){
+     const dx=endpoint.x-first.x,dy=endpoint.y-first.y;
+     const targetLength=Math.hypot(dx,dy);
+     if(targetLength>0.5){
+       A=Math.atan2(dy,dx)*180/Math.PI;
+       if(A<0)A+=360;
+     }
+   }
+ }
+ if(previewLineAngle!==null){
+   // Mobile swipe / RIGHT-button direction has priority. Typed value is length.
+   A=previewLineAngle;
+ }else if(dynAngleManual){
+   A=directionFromMouse();
+ }else{
+   A=directionFromMouse();
+ }
+
+ const ok=mobileDrawInputPending
+   ? finishMobileSegment(L,A)
+   : finishLineByLength(L,A);
+ if(ok){
+   previewLineAngle=null;
+   previewLineLength=null;
+   mobileDrawInputPending=false;
+ }
+ return ok;
+}
+
+function applyEditInput(){
+ if(editLineIndex<0||!first)return false; const value=Number(String(dynLength.value).replace(",","."));
+ if(!Number.isFinite(value)||value<=0)return false;
+
+ const old=lines[editLineIndex];
+ let L=lineLen(old);
+ let A=lineAngle(old);
+
+ if(editMode==="editLength"){
+   L=value;
+   A=directionFromMouse();
+ }else{
+   A=directionFromMouse();
+ }
+
+ pushHistory();
+ const r=A*Math.PI/180;
+ lines[editLineIndex]={
+   x1:first.x,y1:first.y,
+   x2:first.x+L*Math.cos(r),
+   y2:first.y+L*Math.sin(r)
+ };
+ selectedLine=editLineIndex;
+ first=null;preview=null;editMode="draw";editLineIndex=-1;
+ hideDynamic();
+ updateLineFields();
+ setStatus("Joon muudetud");
+ draw();
+ return true;
+}
+
+function beginLineEdit(type){
+ if(selectedLine<0){setStatus("Vali kõigepealt must joon");return} const l=lines[selectedLine];
+ editMode=type;editLineIndex=selectedLine;
+ first={x:l.x1,y:l.y1};
+ preview=ws(l.x2,l.y2);
+ const p=ws(l.x2,l.y2);
+ showDynamic(p.x,p.y,Math.round(lineLen(l)),Math.round(lineAngle(l)));
+ setStatus(type==="editLength"?"Liiguta hiirt ja sisesta uus pikkus":"Liiguta hiirt ja sisesta uus nurk");
+ draw();
+}
+
+function findBlock(p){
+ for(let i=blocks.length-1;i>=0;i--){
+  const b=blocks[i],r=-b.angle*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+  const dx=p.x-b.x,dy=p.y-b.y;
+  const x=dx*c-dy*s,y=dx*s+dy*c;
+  if(Math.abs(x)<=b.length/2&&Math.abs(y)<=366)return i;
+ }
+ return -1;
+}
+
+function pointLineDistance(p,l){
+ const vx=l.x2-l.x1,vy=l.y2-l.y1,d=vx*vx+vy*vy;
+ if(!d)return Infinity;
+ let t=((p.x-l.x1)*vx+(p.y-l.y1)*vy)/d;
+ t=Math.max(0,Math.min(1,t));
+ return dist(p,{x:l.x1+t*vx,y:l.y1+t*vy});
+}
+
+function findLine(p){
+ let best=-1,bd=Infinity;
+ lines.forEach((l,i)=>{const d=pointLineDistance(p,l);if(d<bd){bd=d;best=i}});
+ return bd<250/scale?best:-1;
+}
+
+function updateLineFields(){
+ if(selectedLine<0){lineLength.value="";if(lineAngleInput)lineAngleInput.value="";return}
+ const l=lines[selectedLine];
+ lineLength.value=Math.round(lineLen(l));
+ if(lineAngleInput)lineAngleInput.value=Math.round(lineAngle(l));
+}
+
+function updateBlockFields(){
+ document.querySelectorAll(".dirBtn").forEach(btn=>btn.classList.remove("activeDir"));
+ if(selectedBlock<0){blockLength.value="";blockAngle.value="";return}
+ const b=blocks[selectedBlock];
+ blockLength.value=Math.round(b.length);
+ const A=Math.round(((b.angle%360)+360)%360);
+ blockAngle.value=A;
+ const nearest=[0,90,180,270].reduce((best,d)=>{
+   const diff=Math.min(Math.abs(A-d),360-Math.abs(A-d));
+   return diff<best.diff?{d,diff}:best;
+ },{d:0,diff:Infinity});
+ const btn=document.querySelector('.dirBtn[data-dir="'+nearest.d+'"]');
+ if(btn)btn.classList.add("activeDir");
+}
+
+
+canvas.addEventListener("contextmenu",e=>e.preventDefault());
+
+canvas.addEventListener("pointerdown",e=>{
+ allSelected=false;
+ if(e.button!==2)return;
+
+ const p=mouse(e),w=sw(p.x,p.y);
+
+ // While drawing a line, hold the RIGHT mouse button to rotate
+ // the preview angle. The line is not committed by the right button.
+ if(mode==="line" && first){
+   // Save the angle from the current mouse position before recentering.
+   const startScreenBefore=ws(first.x,first.y);
+   let initialAngle=0;
+   const mdx=p.x-startScreenBefore.x;
+   const mdy=p.y-startScreenBefore.y;
+   if(Math.abs(mdx)>1 || Math.abs(mdy)>1){
+     initialAngle=Math.atan2(mdy,mdx)*180/Math.PI;
+     if(initialAngle<0)initialAngle+=360;
+   }
+
+   rotatingLineAngle=true;
+   lockedSnapPoint=null;
+   dynAngleManual=false;
+
+   // Focus the active line's START point, not the previous endpoint.
+   focusWorldPoint(first.x,first.y);
+
+   try{canvas.setPointerCapture(e.pointerId)}catch(_){}
+
+   dynAngle.value=Math.round(initialAngle);
+   moveDynamic(p.x,p.y);
+   setStatus("PAREM NUPP – alguspunkt fookuses, liiguta hiirt nurga muutmiseks");
+   draw();
+   e.preventDefault();
+   return;
+ }
+
+ const b=findBlock(w);
+ if(b>=0){
+   selectedBlock=b;selectedLine=-1;
+   setStatus("PAREM NUPP = muuda ploki nurka; VASAK = liiguta");
+   rotatingBlock=b;
+   const obj=blocks[b];
+   rotateBaseAngle=obj.angle;
+   rotateStartAngle=Math.atan2(w.y-obj.y,w.x-obj.x)*180/Math.PI;
+   rotateHistorySaved=false;
+   updateBlockFields();
+   draw();
+ }
+ e.preventDefault();
+});
+
+canvas.addEventListener("pointermove",e=>{
+ const p=mouse(e);
+
+ if(middlePanning){
+   ox+=p.x-panLast.x;
+   oy+=p.y-panLast.y;
+   panLast=p;
+   draw();
+   return;
+ }
+ lastMouse=p;
+ const w=sw(p.x,p.y);
+ coords.textContent="X: "+Math.round(w.x)+"  Y: "+Math.round(w.y);
+
+ if((rotatingLineAngle || (e.buttons & 2)) && mode==="line" && first){
+   // RIGHT mouse button = live angle control.
+   // Use the actual pointer position from THIS event, not the previous event.
+   rotatingLineAngle=true;
+
+   const startScreen=ws(first.x,first.y);
+   const dx=p.x-startScreen.x;
+   const dy=p.y-startScreen.y;
+
+   if(Math.abs(dx)>1 || Math.abs(dy)>1){
+     let A=Math.atan2(dy,dx)*180/Math.PI;
+     if(A<0) A+=360;
+
+     // RIGHT mouse: the cursor controls BOTH angle and length in real time.
+     // This is the same dynamic behaviour as the left-button preview: the
+     // endpoint follows the cursor, while the angle is read from A -> cursor.
+     let L=Math.hypot(dx,dy)/Math.max(scale,0.000001);
+     if(!Number.isFinite(L)) L=0;
+
+     const r=A*Math.PI/180;
+     let q={
+       x:first.x+L*Math.cos(r),
+       y:first.y+L*Math.sin(r)
+     };
+
+     const snap=endpointSnapPoint(q);
+     if(snap){
+       q={x:snap.x,y:snap.y};
+       lockedSnapPoint={x:snap.x,y:snap.y};
+       L=Math.hypot(q.x-first.x,q.y-first.y);
+       A=Math.atan2(q.y-first.y,q.x-first.x)*180/Math.PI;
+       if(A<0)A+=360;
+     }else{
+       lockedSnapPoint=null;
+     }
+
+     // Remember the exact angle chosen with the RIGHT button.
+     // A later LEFT click commits this preview instead of recalculating
+     // the direction from the mouse position.
+     previewLineAngle=A;
+     previewLineLength=L;
+     preview=ws(q.x,q.y);
+
+     // Show both values next to the cursor.
+     dyn.style.display="block";
+     moveDynamic(p.x,p.y);
+     dynLength.value=Math.round(L);
+     dynAngle.value=Math.round(A);
+
+     setStatus("PAREM NUPP – nurk "+Math.round(A)+"°");
+     draw();
+   }
+   return;
+ }
+ if(mode==="select" && findBlock(w)>=0){
+   canvas.style.cursor="pointer";
+ }else if(mode==="select"){
+   canvas.style.cursor="default";
+ }else{
+   canvas.style.cursor="crosshair";
+ }
+
+ if(rotatingBlock>=0){
+   if(!rotateHistorySaved){
+     pushHistory();
+     rotateHistorySaved=true;
+   }
+   const b=blocks[rotatingBlock];
+   const a=Math.atan2(w.y-b.y,w.x-b.x)*180/Math.PI;
+   b.angle=((rotateBaseAngle+(a-rotateStartAngle))%360+360)%360;
+   b._autoManualAngle=true;
+   selectedBlock=rotatingBlock;
+   updateBlockFields();
+   draw();
+   return;
+ }
+
+ if(dragging&&dragBlock>=0){
+   const b=blocks[dragBlock];
+   const old={x:b.x,y:b.y,angle:b.angle};
+
+   const nx=w.x-dragDX;
+   const ny=w.y-dragDY;
+
+   // Blocks are free around the whole drawing.
+   // The ONLY wall restriction is the 300 mm minimum clearance.
+   b.x=nx;
+   b.y=ny;
+
+   // When a block is brought close to a wall, activate that wall as
+   // the block's working wall. Normal blocks take the wall direction;
+   // fixed vertical/horizontal blocks keep their own orientation and
+   // only activate a parallel wall.
+   const nearWall=nearestWallSegmentToPoint(b.x,b.y,900);
+   if(nearWall){
+     if(blockHasFixedOrientation(b)){
+       const parallel=nearestParallelWallForBlock(b,b.x,b.y);
+       if(parallel && parallel.distance<=900){
+         b._wallIndex=parallel.index;
+       }
+     }else{
+       b._wallIndex=nearWall.index;
+       b.angle=Math.atan2(nearWall.uy,nearWall.ux)*180/Math.PI;
+     }
+   }
+
+   // MANUAL DRAG SAFETY:
+   // Do not teleport the block while it is being dragged.
+   // The old version called enforceMinimumWallClearance() during every
+   // pointermove, which could snap a block to a wall and make it appear
+   // to disappear. A manual move is now accepted only if the final
+   // position is valid.
+   const tooClose=nearestTooCloseWall(b);
+   const overlapping=blockOverlapsAny(b,dragBlock);
+
+   if(tooClose || overlapping){
+     b.x=old.x;
+     b.y=old.y;
+     b.angle=old.angle;
+     if(tooClose){
+       setStatus("KEELATUD: plokk peab jääma seinast vähemalt 300 mm kaugusele");
+     }else{
+       setStatus("KEELATUD: plokid ei tohi üksteise sisse minna – ainult otsast otsani");
+     }
+   }else{
+     // Snap end-to-end only when the snapped result itself is valid.
+     const sx=b.x, sy=b.y, sa=b.angle;
+     if(snapBlockEndToEnd(b,dragBlock,260)){
+       if(nearestTooCloseWall(b) || blockOverlapsAny(b,dragBlock)){
+         b.x=sx; b.y=sy; b.angle=sa;
+       }
+     }
+   }
+
+   draw();
+   return;
+ }
+
+ if(first){
+   moveDynamic(p.x,p.y);
+   let q=orthoPoint(first,w);
+
+   if(editMode==="editLength"){
+     const L=Number(String(dynLength.value).replace(",","."));
+     if(Number.isFinite(L)&&L>0){
+       const A=directionFromMouse();
+       const r=A*Math.PI/180;
+       q={x:first.x+L*Math.cos(r),y:first.y+L*Math.sin(r)};
+     }
+   }
+
+   if(editMode==="editAngle"){
+     const A=Number(String(dynAngle.value).replace(",","."));
+     const L=editLineIndex>=0?lineLen(lines[editLineIndex]):1000;
+     if(Number.isFinite(A)){
+       const r=A*Math.PI/180;
+       q={x:first.x+L*Math.cos(r),y:first.y+L*Math.sin(r)};
+     }
+   }
+
+   const endpoint=endpointSnapPoint(q);
+   if(endpoint){
+     q={x:endpoint.x,y:endpoint.y};
+   }
+
+   preview=ws(q.x,q.y);
+   updateDynamicFromMouse(q);
+
+   draw();
+ }
+});
+
+
+
+// -------------------- MOBILE / TOUCH --------------------
+// FREEZ DRAW: disables drawing input while leaving navigation/zoom available.
+const eraserBtn=document.getElementById("eraserBtn");
+let eraserActive=false;
+
+function syncEraserState(){
+  const enabled=!!drawFrozen;
+  eraserBtn.disabled=!enabled;
+  eraserBtn.classList.toggle("active",enabled && eraserActive);
+  document.body.classList.toggle("eraser-mode",enabled && eraserActive);
+  eraserBtn.title=enabled
+    ? (eraserActive ? "Lasth aktiivne – puuduta objekti kustutamiseks" : "Aktiveeri objektide kustutamine")
+    : "Lasth on kasutatav ainult FREEZE režiimis";
+}
+
+function eraseObjectAt(worldPoint){
+  if(!drawFrozen || !eraserActive)return false;
+
+  // Blocks have priority when the touch/click is over both a block and a line.
+  const bi=findBlock(worldPoint);
+  if(bi>=0){
+    pushHistory();
+    blocks.splice(bi,1);
+    selectedBlock=-1;
+    selectedLine=-1;
+    updateBlockFields();
+    updateLineFields();
+    updateBlockSchedule();
+    setStatus("Plokk kustutatud");
+    draw();
+    return true;
+  }
+
+  const li=findLine(worldPoint);
+  if(li>=0){
+    pushHistory();
+    lines.splice(li,1);
+    selectedLine=-1;
+    selectedBlock=-1;
+    updateLineFields();
+    updateBlockFields();
+    updateBlockSchedule();
+    setStatus("Joon kustutatud");
+    draw();
+    return true;
+  }
+
+  setStatus("Lasth: puuduta joont või plokki");
+  return false;
+}
+
+eraserBtn.addEventListener("click",e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  if(!drawFrozen)return;
+  eraserActive=!eraserActive;
+  syncEraserState();
+  setStatus(eraserActive ? "Lasth aktiivne – puuduta kustutatavat objekti" : "Lasth välja lülitatud");
+});
+
+const freezeDrawBtn=document.getElementById("freezeDrawBtn");
+function setDrawFrozen(value){
+  drawFrozen=!!value;
+  if(!drawFrozen) eraserActive=false;
+  syncEraserState();
+  freezeDrawBtn.classList.toggle("active",drawFrozen);
+  freezeDrawBtn.textContent=drawFrozen?"UNFREEZ DRAW":"FREEZ DRAW";
+  freezeDrawBtn.title=drawFrozen?"Taasta joonistamine":"Peata joonistamine";
+  if(drawFrozen){
+    first=null; preview=null; previewLineAngle=null; previewLineLength=null;
+    rotatingLineAngle=false; lockedSnapPoint=null;
+    editMode="draw"; editLineIndex=-1; hideDynamic();
+    setStatus("FREEZ DRAW – joonistamine peatatud; saad vaadata ja skaleerida");
+  }else{
+    setStatus(mode==="line"?"Joonistamine aktiivne – klõpsa alguspunkt":"Vali joon või plokk");
+  }
+  draw();
+}
+freezeDrawBtn.onclick=()=>setDrawFrozen(!drawFrozen);
+syncEraserState();
+
+function finishMobileSegment(L,A){
+  if(!first || !Number.isFinite(L) || L<=1)return false;
+  const start={x:first.x,y:first.y};
+  const r=A*Math.PI/180;
+  const end={x:start.x+L*Math.cos(r),y:start.y+L*Math.sin(r)};
+  pushHistory();
+  lines.push({x1:start.x,y1:start.y,x2:end.x,y2:end.y});
+  selectedLine=lines.length-1;
+  selectedBlock=-1;
+  first={x:end.x,y:end.y};
+  preview={x:end.x,y:end.y};
+  previewLineAngle=null;
+  previewLineLength=null;
+  lockedSnapPoint=null;
+  rotatingLineAngle=false;
+  editMode="draw";
+  editLineIndex=-1;
+  hideDynamic();
+  updateLineFields();
+  setStatus("Lõik lõpetatud – puuduta uuesti ja vea järgmise lõigu suunas");
+  draw();
+  return true;
+}
+
+// One finger: mobile LINE mode draws a continuous chain.
+// Release fixes the current segment; the next touch starts from its endpoint.
+// Numeric length input is shown on release. Two fingers: pan/zoom in FREEZ DRAW.
+canvas.addEventListener("pointerdown",e=>{
+ if(e.pointerType!=="touch")return;
+ e.preventDefault();
+ if(drawFrozen && typeof eraserActive!=="undefined" && eraserActive){
+   const p=mouse(e);
+   eraseObjectAt(sw(p.x,p.y));
+   return;
+ }
+ if(document.activeElement && document.activeElement instanceof HTMLInputElement){document.activeElement.blur();}
+ const p=mouse(e);
+ touchPoints.set(e.pointerId,p);
+ try{canvas.setPointerCapture(e.pointerId)}catch(_){}
+
+ if(touchPoints.size===2){
+   touchGesture=true;
+   touchSinglePointer=null;
+   const mid=touchMidpoint();
+   touchPinchStartDist=Math.max(1,touchDistance());
+   touchPinchStartScale=scale;
+   touchPinchStartMid=mid;
+   touchPinchWorld=sw(mid.x,mid.y);
+   return;
+ }
+
+ touchSinglePointer=e.pointerId;
+ touchSingleStart=p;
+ touchSingleMoved=false;
+
+ // FREEZ DRAW: one finger pans the whole drawing; two fingers pan + zoom.
+ if(drawFrozen){
+   touchPanStart={x:p.x,y:p.y};
+   touchPanStartOx=ox;
+   touchPanStartOy=oy;
+   draw();
+   return;
+ }
+
+ const w=sw(p.x,p.y);
+
+ if(mode==="measure"){
+   const picked=pickMeasurePoint(w);
+   if(!picked){setStatus("MÕÕDA VAHEMAAD – puuduta joont või ploki serva");return;}
+   if(!measureFirstPoint){
+     measureFirstPoint={x:picked.x,y:picked.y,type:picked.type,index:picked.index};
+     measureSecondPoint=null;measureResult=null;
+     setStatus("Punkt A valitud – puuduta punkt B");
+   }else{
+     measureSecondPoint={x:picked.x,y:picked.y,type:picked.type,index:picked.index};
+     measureResult=measureDistanceBetweenPoints(measureFirstPoint,measureSecondPoint);
+     setStatus("A → B: "+Math.round(measureResult)+" mm – vajuta SALVESTA MÕÕT");
+   }
+   updateSaveMeasureButton();draw();
+   return;
+ }
+
+ if(mode==="line"){
+   if(drawFrozen){ draw(); return; }
+   if(!first){
+     const endpoint=endpointSnapPoint(w);
+     first=endpoint?{x:endpoint.x,y:endpoint.y}:w;
+     editMode="draw";previewLineAngle=null;previewLineLength=null;
+     preview=p;
+     hideDynamic();
+     setStatus("Liiguta sõrme suunas – vabastamisel fikseeritakse lõik");
+   }
+   draw();
+   return;
+ }
+
+ if(mode==="select"){
+   const b=findBlock(w);
+   if(b>=0){
+     selectedBlock=b;selectedLine=-1;
+     pushHistory();
+     dragging=true;dragBlock=b;
+     dragDX=w.x-blocks[b].x;dragDY=w.y-blocks[b].y;updateBlockFields();draw();
+   }
+ }
+});
+
+canvas.addEventListener("pointermove",e=>{
+ if(e.pointerType!=="touch")return;
+ e.preventDefault();
+ const p=mouse(e);
+ if(touchPoints.has(e.pointerId))touchPoints.set(e.pointerId,p);
+
+ if(touchPoints.size>=2){
+   touchGesture=true;
+   const mid=touchMidpoint();
+   const d=Math.max(1,touchDistance());
+   const beforeWorld=touchPinchWorld;
+   if(drawFrozen){
+     // FREEZ DRAW: two fingers control both zoom and pan.
+     // Keep the world point under the initial midpoint fixed while scaling.
+     const newScale=Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,touchPinchStartScale*(d/Math.max(1,touchPinchStartDist))));
+     scale=newScale;
+   }else{
+     // Normal drawing mode: two fingers only pan; pinch zoom stays disabled.
+     scale=touchPinchStartScale;
+   }
+   ox=mid.x-W/2-beforeWorld.x*scale;
+   oy=mid.y-H/2-beforeWorld.y*scale;
+   coords.textContent="X: "+Math.round(beforeWorld.x)+"  Y: "+Math.round(beforeWorld.y);
+   draw();
+   return;
+ }
+
+ if(drawFrozen && touchSinglePointer===e.pointerId && touchPoints.size===1){
+   ox=touchPanStartOx+(p.x-touchPanStart.x);
+   oy=touchPanStartOy+(p.y-touchPanStart.y);
+   draw();
+   return;
+ }
+
+ if(touchSinglePointer===e.pointerId){
+   if(Math.hypot(p.x-touchSingleStart.x,p.y-touchSingleStart.y)>6)touchSingleMoved=true;
+ }
+
+ if(mode==="line" && first && touchSinglePointer===e.pointerId && !touchGesture){
+   if(drawFrozen)return;
+   const dx=p.x-touchSingleStart.x, dy=p.y-touchSingleStart.y;
+   if(Math.hypot(dx,dy)>3){
+     let A=Math.atan2(dy,dx)*180/Math.PI;
+     if(A<0)A+=360;
+     const L=Math.hypot(dx,dy)/Math.max(scale,0.000001);
+     const r=A*Math.PI/180;
+     const q={x:first.x+L*Math.cos(r),y:first.y+L*Math.sin(r)};
+     previewLineAngle=A; previewLineLength=L; preview=ws(q.x,q.y);
+     if(dynAngleDisplay)dynAngleDisplay.textContent=Math.round(A)+"°";
+     hideDynamic();
+     coords.textContent="X: "+Math.round(q.x)+"  Y: "+Math.round(q.y);
+     setStatus("Suund "+Math.round(A)+"° – vabasta sõrm, et lõik fikseerida");
+     draw();
+   }
+   return;
+ }
+
+ if(mode==="select" && dragging && dragBlock>=0 && touchSinglePointer===e.pointerId && !touchGesture){
+   const w=sw(p.x,p.y);
+   const b=blocks[dragBlock];
+   const old={x:b.x,y:b.y,angle:b.angle};
+   b.x=w.x-dragDX;b.y=w.y-dragDY;
+   const nearWall=nearestWallSegmentToPoint(b.x,b.y,900);
+   if(nearWall)b._wallIndex=nearWall.index;
+
+   // Same safe-drag rule as desktop: never teleport a block during touch drag.
+   const tooClose=nearestTooCloseWall(b);
+   const overlapping=blockOverlapsAny(b,dragBlock);
+   if(tooClose || overlapping){
+     b.x=old.x;b.y=old.y;b.angle=old.angle;
+   }else{
+     const sx=b.x,sy=b.y,sa=b.angle;
+     if(snapBlockEndToEnd(b,dragBlock,260)){
+       if(nearestTooCloseWall(b) || blockOverlapsAny(b,dragBlock)){
+         b.x=sx;b.y=sy;b.angle=sa;
+       }
+     }
+   }
+   draw();
+ }
+});
+
+canvas.addEventListener("pointerup",e=>{
+ if(e.pointerType!=="touch")return;
+ e.preventDefault();
+ const p=mouse(e);
+ touchPoints.set(e.pointerId,p);
+ touchPoints.delete(e.pointerId);
+ try{canvas.releasePointerCapture(e.pointerId)}catch(_){}
+
+ if(touchPoints.size===0){
+   // Release opens the length confirmation. OK commits the segment and keeps the chain alive.
+   if(mode==="line" && first && touchSinglePointer===e.pointerId && touchSingleMoved && !touchGesture && !drawFrozen){
+     const A=previewLineAngle!==null?previewLineAngle:directionFromMouseFree();
+     const L=previewLineLength!==null?previewLineLength:0;
+     if(L>1){
+       previewLineAngle=A;previewLineLength=L;lastMouse={x:p.x,y:p.y};
+       mobileDrawInputPending=true;
+       showDynamic(p.x,p.y,Math.round(L),Math.round(A));
+       dynLength.value=Math.round(L);
+       if(dynAngleDisplay)dynAngleDisplay.textContent=Math.round(A)+"°";
+       setStatus("Sisesta joone pikkus ja vajuta OK");
+       setTimeout(()=>{try{dynLength.focus({preventScroll:true});dynLength.select();}catch(_){}} ,40);
+     }
+   }
+      dragging=false;dragBlock=-1;touchGesture=false;touchSinglePointer=null;touchSingleMoved=false;
+ }
+ if(touchPoints.size===1){
+   const mid=touchMidpoint();
+   touchPinchStartDist=Math.max(1,touchDistance());
+   touchPinchStartScale=scale;
+   touchPinchStartMid=mid;
+   touchPinchWorld=sw(mid.x,mid.y);
+   touchGesture=false;
+ }
+ draw();
+});
+
+canvas.addEventListener("pointercancel",e=>{
+ if(e.pointerType!=="touch")return;
+ touchPoints.delete(e.pointerId);
+ try{canvas.releasePointerCapture(e.pointerId)}catch(_){}
+ if(touchPoints.size===0){touchGesture=false;touchSinglePointer=null;dragging=false;dragBlock=-1;}
+ draw();
+});
+
+canvas.addEventListener("wheel",e=>{
+  // Wheel zoom is intentionally disabled. Use +/- or the zoom slider.
+  e.preventDefault();
+},{passive:false});
+
+let middlePanning=false;
+let panLast={x:0,y:0};
+
+canvas.addEventListener("pointerdown",e=>{
+ if(e.pointerType==="touch") return;
+ if(e.button===1){
+   middlePanning=true;
+   panLast=mouse(e);
+   canvas.setPointerCapture(e.pointerId);
+   e.preventDefault();
+   return;
+ }
+
+ if(e.button!==0)return;
+ const p=mouse(e),w=sw(p.x,p.y);
+
+ if(drawFrozen && eraserActive){
+   eraseObjectAt(w);
+   e.preventDefault();
+   return;
+ }
+
+ if(mode==="measure"){
+   const picked=pickMeasurePoint(w);
+
+   if(!picked){
+     setStatus("MÕÕDA VAHEMAAD – klõpsa joone või ploki serva/nurga peale");
+     return;
+   }
+
+   if(!measureFirstPoint){
+     measureFirstPoint={x:picked.x,y:picked.y,type:picked.type,index:picked.index};
+     measureSecondPoint=null;
+     measureResult=null;
+     setStatus("Punkt A valitud – klõpsa punkt B");
+     updateSaveMeasureButton();
+     draw();
+     return;
+   }
+
+   measureSecondPoint={x:picked.x,y:picked.y,type:picked.type,index:picked.index};
+   measureResult=measureDistanceBetweenPoints(measureFirstPoint,measureSecondPoint);
+
+   setStatus("A → B: "+Math.round(measureResult)+" mm – vajuta SALVESTA MÕÕT");
+   updateSaveMeasureButton();
+   draw();
+   return;
+ }
+
+ if(mode==="line"){
+   if(drawFrozen){setStatus("FREEZ DRAW – joonistamine peatatud");return;}
+   if(!first){
+     const endpoint=endpointSnapPoint(w);
+     first=endpoint ? {x:endpoint.x,y:endpoint.y} : w;
+     try{canvas.setPointerCapture(e.pointerId)}catch(_){}
+     editMode="draw";
+     previewLineAngle=null;
+     previewLineLength=null;
+     preview=ws(w.x,w.y);
+     showDynamic(p.x,p.y,"","");
+     setStatus("Liiguta hiirt – punktiir näitab järgmise joone suunda");
+     draw();
+   }else{
+     // If RIGHT is still held and the cursor is snapped to an endpoint,
+     // LEFT click confirms that exact snap point.
+     if((e.buttons & 2) && lockedSnapPoint){
+       const dx=lockedSnapPoint.x-first.x;
+       const dy=lockedSnapPoint.y-first.y;
+       const L=Math.hypot(dx,dy);
+       if(L>1){
+         const A=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
+         finishLineByLength(L,A);
+         lockedSnapPoint=null;
+       }
+       return;
+     }
+
+     // LEFT click commits the currently visible preview.
+     // If the angle was set with RIGHT-drag, keep exactly that angle.
+     let L;
+     let A;
+
+     if(previewLineAngle!==null && previewLineLength!==null){
+       L=previewLineLength;
+       A=previewLineAngle;
+     }else{
+       let q=preview?sw(preview.x,preview.y):w;
+       const endpoint=endpointSnapPoint(q);
+       if(endpoint) q={x:endpoint.x,y:endpoint.y};
+       L=Math.hypot(q.x-first.x,q.y-first.y);
+       A=directionFromMouse();
+     }
+
+     if(L>1){
+       finishLineByLength(L,A);
+       previewLineAngle=null;
+       previewLineLength=null;
+     }
+     try{canvas.releasePointerCapture(e.pointerId)}catch(_){}
+   }
+   return;
+ }
+
+ if(mode==="select"){
+   const b=findBlock(w);
+   if(b>=0){
+     selectedBlock=b;selectedLine=-1;
+     pushHistory();
+     dragging=true;dragBlock=b;
+     dragDX=w.x-blocks[b].x;dragDY=w.y-blocks[b].y;
+     updateBlockFields();draw();return;
+   }
+   selectedLine=findLine(w);
+   selectedBlock=-1;
+   updateLineFields();draw();
+ }
+});
+
+canvas.addEventListener("pointerup",e=>{
+ if(e.button===1){
+   middlePanning=false;
+   try{canvas.releasePointerCapture(e.pointerId)}catch(_){}
+   return;
+ }
+ if(e.button===2){
+   if(rotatingLineAngle){
+     rotatingLineAngle=false;
+     try{canvas.releasePointerCapture(e.pointerId)}catch(_){}
+     setStatus("Nurk määratud – VASAK KLIKK või Enter kinnitab selle joone");
+     draw();
+     return;
+   }
+   rotatingBlock=-1;
+   rotateHistorySaved=false;
+   return;
+ }
+  dragging=false;dragBlock=-1;
+ try{canvas.releasePointerCapture(e.pointerId)}catch(_){}
+});
+
+["dynLength"].forEach(id=>{
+ const el=document.getElementById(id);if(!el)return;
+ el.addEventListener("keydown",e=>{
+   if(e.key==="Enter"){e.preventDefault();if(drawFrozen)return;if(editMode==="draw")applyDrawInput();else applyEditInput();}
+   if(e.key==="Escape"){e.preventDefault();first=null;preview=null;mobileDrawInputPending=false;editMode="draw";editLineIndex=-1;hideDynamic();setStatus("Käsk katkestatud");draw();}
+ });
+ el.addEventListener("input",()=>{
+   if(id==="dynLength")el.value=el.value.replace(/\D+/g,"");
+   draw();
+ });
+});
+if(dynOk)dynOk.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();if(drawFrozen)return;if(editMode==="draw")applyDrawInput();else applyEditInput();});
+
+document.addEventListener("keydown",e=>{
+ const editing=["INPUT","TEXTAREA"].includes(document.activeElement?.tagName);
+
+ if(e.key==="Escape"){
+   measureFirstPoint=null;
+   measureSecondPoint=null;
+   measureResult=null;
+   updateSaveMeasureButton();
+   first=null;preview=null;previewLineAngle=null;previewLineLength=null;mobileDrawInputPending=false;editMode="draw";editLineIndex=-1;
+   hideDynamic();setStatus("Käsk katkestatud");draw();return;
+ }
+
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"&&!editing){
+   e.preventDefault();
+   undo();
+   return;
+ }
+
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"&&!editing){
+   e.preventDefault();
+   redo();
+   return;
+ }
+
+ if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key.toLowerCase()==="z"&&!editing){
+   e.preventDefault();
+   redo();
+   return;
+ }
+
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="a"&&!editing){
+   e.preventDefault();
+   selectAllObjects();
+   return;
+ }
+
+ if(e.key==="Delete"&&!editing){deleteSelected();return}
+
+ if(!editing && !e.ctrlKey && !e.metaKey && e.key.toLowerCase()==="l"){
+   e.preventDefault();
+   if(lines.length) focusLastPointAndContinue();
+   else activate("line");
+   return;
+ }
+
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"){
+   if(selectedBlock>=0){
+     e.preventDefault();
+     copyBlockToClipboard();
+   }
+   return;
+ }
+
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="v"){
+   if(clipboardBlock){
+     e.preventDefault();
+     pasteBlockFromClipboard();
+   }
+   return;
+ }
+
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="d"){
+   e.preventDefault();copySelectedBlock();return;
+ }
+});
+
+
+function copyBlockToClipboard(){
+ if(selectedBlock<0){
+   setStatus("Vali kõigepealt roheline tellinguplokk");
+   return;
+ }
+ clipboardBlock={...blocks[selectedBlock]};
+ setStatus("Plokk kopeeritud – Ctrl+V asetab koopia");
+}
+
+function pasteBlockFromClipboard(){
+ if(!clipboardBlock){
+   setStatus("Kõigepealt Ctrl+C");
+   return;
+ }
+ pushHistory();
+ const b={...clipboardBlock,x:clipboardBlock.x+500,y:clipboardBlock.y+500};
+ blocks.push(b);
+ if(blockWallIndex(b)>=0){
+   snapBlockToAssignedWall(b,b.x,b.y);
+ }else if(lines.length){
+   snapBlockToWall(b,b.x,b.y,true);
+ }
+
+ enforceMinimumWallClearance(b);
+
+ if(blockOverlapsAny(b,blocks.length-1)){
+   blocks.pop();
+   setStatus("KEELATUD: kopeeritud plokk kattuks olemasoleva plokiga");
+   draw();
+   return;
+ }
+
+ selectedBlock=blocks.length-1;
+ selectedLine=-1;
+ updateBlockFields();
+ setStatus("Plokk kleebitud");
+ draw();
+}
+
+function deleteSelected(){
+ if(allSelected){
+   if(!lines.length&&!blocks.length)return;
+   pushHistory();
+   lines=[];
+   blocks=[];
+   savedMeasurements=[];
+   selectedLine=-1;
+   selectedBlock=-1;
+   allSelected=false;
+   updateLineFields();
+   updateBlockFields();
+   setStatus("Kõik objektid kustutatud");
+   draw();
+   return;
+ }
+ if(selectedBlock>=0){
+   pushHistory();blocks.splice(selectedBlock,1);selectedBlock=-1;updateBlockFields();draw();
+ }else if(selectedLine>=0){
+   pushHistory();lines.splice(selectedLine,1);selectedLine=-1;updateLineFields();draw();
+ }
+}
+
+function copySelectedBlock(){
+ if(selectedBlock<0){setStatus("Vali kõigepealt roheline tellinguplokk");return}
+ pushHistory();
+ const b=blocks[selectedBlock];
+ const copy={
+   x:b.x+b.length+300,y:b.y,length:b.length,angle:b.angle,
+   _wallIndex:b._wallIndex,_orientationFixed:b._orientationFixed
+ };
+ blocks.push(copy);
+ if(blockWallIndex(copy)>=0) snapBlockToAssignedWall(copy,copy.x,copy.y);
+
+ enforceMinimumWallClearance(copy);
+
+ if(blockOverlapsAny(copy,blocks.length-1)){
+   blocks.pop();
+   setStatus("KEELATUD: plokid ei tohi üksteise sisse minna");
+   draw();
+   return;
+ }
+
+ selectedBlock=blocks.length-1;selectedLine=-1;
+ updateBlockFields();setStatus("Plokk kopeeritud – liiguta hiirega");draw();
+}
+
+function focusLastPointAndContinue(){
+ if(!lines.length){
+   activate("line");
+   return;
+ }
+
+ const last=lines[lines.length-1];
+ const point={x:last.x2,y:last.y2};
+
+ // Center the model on the last endpoint.
+ ox=-point.x*scale;
+ oy=-point.y*scale;
+
+ mode="line";
+ first={x:point.x,y:point.y};
+ preview=ws(point.x,point.y);
+ editMode="draw";
+ editLineIndex=-1;
+ selectedLine=lines.length-1;
+ selectedBlock=-1;
+
+ hideDynamic();
+ lineBtn.classList.add("active");
+ selectBtn.classList.remove("active");
+
+ // Put the cursor input near the centered endpoint.
+ const screenPoint=ws(point.x,point.y);
+ showDynamic(
+   Math.min(Math.max(screenPoint.x+12,4),Math.max(4,W-160)),
+   Math.min(Math.max(screenPoint.y+12,4),Math.max(4,H-70)),
+   "",
+   ""
+ );
+
+ setStatus("Jätkad viimasest punktist – liiguta hiirt");
+ draw();
+}
+
+const selectBtn={classList:{add(){},remove(){},toggle(){}},onclick:null};
+
+function connectLastDrawingEnds(){
+  if(lines.length<1){ setStatus("Ühendamiseks pole piisavalt jooni"); return; }
+
+  const eps=[];
+  const tol=0.5;
+  const addEnd=(x,y,lineIndex,side)=>{
+    const existing=eps.find(e=>Math.hypot(e.x-x,e.y-y)<=tol);
+    if(existing){ existing.refs.push({lineIndex,side}); }
+    else eps.push({x,y,refs:[{lineIndex,side}]});
+  };
+  lines.forEach((l,i)=>{
+    addEnd(l.x1,l.y1,i,1);
+    addEnd(l.x2,l.y2,i,2);
+  });
+
+  // Only free/open endpoints: an endpoint belonging to one segment.
+  const open=eps.filter(e=>e.refs.length===1);
+  if(open.length<2){ setStatus("Leitud ei ole kahte vaba lõppu"); return; }
+
+  // For a drawing with several open ends, connect the two furthest ends.
+  let best=null;
+  for(let i=0;i<open.length;i++) for(let j=i+1;j<open.length;j++){
+    const d=Math.hypot(open[i].x-open[j].x,open[i].y-open[j].y);
+    if(!best||d>best.d)best={a:open[i],b:open[j],d};
+  }
+  if(!best||best.d<=1){ setStatus("Kaks erinevat lõppu puuduvad"); return; }
+
+  pushHistory();
+  lines.push({x1:best.a.x,y1:best.a.y,x2:best.b.x,y2:best.b.y});
+  selectedLine=lines.length-1;
+  selectedBlock=-1;
+  first=null;
+  preview=null;
+  previewLineAngle=null;
+  previewLineLength=null;
+  hideDynamic();
+  setStatus("CONNECT LINE – kaks lõppu ühendatud");
+  draw();
+}
+
+const connectLineBtn=document.getElementById("connectLineBtn");
+connectLineBtn.onclick=connectLastDrawingEnds;
+
+const measureBtn=document.getElementById("measureBtn");
+
+function activate(m){
+ if(measureMode)stopMeasureDistance();
+ mode=m;first=null;preview=null;editMode="draw";editLineIndex=-1;
+ hideDynamic();
+ lineBtn.classList.toggle("active",m==="line");
+ selectBtn.classList.toggle("active",m==="select");
+ measureBtn.classList.toggle("active",m==="measure");
+
+ if(m==="line"){
+   setStatus("Uus joon – klõpsa alguspunkt");
+   return;
+ }
+
+ setStatus("Vali joon või plokk");
+ draw();
+}
+
+lineBtn.onclick=()=>{
+ if(drawFrozen)setDrawFrozen(false);
+ if(measureMode)stopMeasureDistance();
+ // Start a completely new, independent line.
+ mode="line";
+ first=null;
+ preview=null;
+ previewLineAngle=null;
+ previewLineLength=null;
+ editMode="draw";
+ editLineIndex=-1;
+ rotatingLineAngle=false;
+ hideDynamic();
+ lineBtn.classList.add("active");
+ selectBtn.classList.remove("active");
+ setStatus("Uus joon – klõpsa alguspunkt");
+ draw();
+};
+measureBtn.onclick=startMeasureDistance;
+document.getElementById("saveMeasureBtn").onclick=saveCurrentMeasurement;
+copyBtn.onclick=copyBlockToClipboard;
+copyBtn2.onclick=copyBlockToClipboard;
+deleteBtn.onclick=deleteSelected;
+
+undoBtn.onclick=e=>{e.preventDefault();e.stopPropagation();undo();};
+const undoFloatBtn=document.getElementById("undoFloatBtn");
+const redoFloatBtn=document.getElementById("redoFloatBtn");
+
+function bindHistoryButton(btn, action){
+  if(!btn) return;
+  btn.style.pointerEvents="auto";
+  btn.style.touchAction="manipulation";
+}
+
+bindHistoryButton(undoFloatBtn,undo);
+bindHistoryButton(redoFloatBtn,redo);
+
+// Handle the first touch immediately. The following synthetic Android click is
+// consumed so one physical tap can never execute Undo/Redo twice.
+document.addEventListener("pointerdown",e=>{
+  const btn=e.target && e.target.closest ? e.target.closest("#historyControls button") : null;
+  if(!btn)return;
+  if(btn.disabled)return;
+  e.preventDefault();
+  e.stopPropagation();
+  if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+  if(btn.id==="undoFloatBtn") undo();
+  else if(btn.id==="redoFloatBtn") redo();
+  btn.dataset.historyHandled="1";
+},{capture:true,passive:false});
+
+document.addEventListener("click",e=>{
+  const btn=e.target && e.target.closest ? e.target.closest("#historyControls button") : null;
+  if(!btn)return;
+  e.preventDefault();
+  e.stopPropagation();
+  if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+  // The action/confirmation was already triggered by pointerdown.
+  if(btn.dataset.historyHandled==="1"){
+    btn.dataset.historyHandled="0";
+    return;
+  }
+  if(btn.disabled)return;
+  if(btn.id==="undoFloatBtn") undo();
+  else if(btn.id==="redoFloatBtn") redo();
+},{capture:true});
+
+updateHistoryButtons();
+
+clearBtn.onclick=()=>{
+ if(!lines.length&&!blocks.length&&!savedMeasurements.length)return;
+ pushHistory();lines=[];blocks=[];savedMeasurements=[];first=null;preview=null;
+ selectedLine=-1;selectedBlock=-1;hideDynamic();draw();
+ setStatus("Töölaud puhastatud");
+};
+
+gridBtn.onclick=()=>{
+ grid=!grid;gridBtn.classList.toggle("active",grid);draw();
+};
+
+orthoBtn.onclick=()=>{
+ ortho=!ortho;orthoBtn.classList.toggle("active",ortho);
+ setStatus(ortho?"ORTO sees":"ORTO väljas");draw();
+};
+
+const ZOOM_MIN=110/60000;
+const ZOOM_MAX=0.55;
+const ZOOM_STEPS=101;
+function zoomLabelFromScale(s){
+  const ratio=Math.max(1,Math.round(110/s));
+  return "1:"+ratio;
+}
+function setZoomScale(newScale,centerX=W/2,centerY=H/2){
+  const oldScale=scale;
+  const before=sw(centerX,centerY);
+  scale=Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,newScale));
+  ox += (before.x)*(oldScale-scale);
+  oy += (before.y)*(oldScale-scale);
+  updateZoomUI();
+  draw();
+}
+function updateZoomUI(){
+  const t=(Math.log(scale/ZOOM_MIN)/Math.log(ZOOM_MAX/ZOOM_MIN));
+  zoomSlider.value=Math.round(Math.max(0,Math.min(1,t))*100);
+  zoomScaleLabel.textContent=zoomLabelFromScale(scale);
+}
+zoomIn.onclick=()=>setZoomScale(scale*1.25,W/2,H/2);
+zoomOut.onclick=()=>setZoomScale(scale/1.25,W/2,H/2);
+zoomSlider.oninput=()=>{
+  const t=Number(zoomSlider.value)/100;
+  const s=ZOOM_MIN*Math.pow(ZOOM_MAX/ZOOM_MIN,t);
+  setZoomScale(s,W/2,H/2);
+};
+fitBtn.onclick=()=>{scale=DEFAULT_ZOOM_SCALE;ox=0;oy=0;updateZoomUI();draw()};
+updateZoomUI();
+
+function applySelectedLineLengthFromPanel(){
+ if(selectedLine<0){
+   setStatus("Vali kõigepealt joon");
+   return false;
+ }
+ const L=Number(String(lineLength.value).replace(",","."));
+ if(!Number.isFinite(L)||L<=0){
+   setStatus("Sisesta korrektne pikkus");
+   return false;
+ }
+ const l=lines[selectedLine];
+ const A=lineAngle(l);
+ const r=A*Math.PI/180;
+ pushHistory();
+ lines[selectedLine]={
+   x1:l.x1,
+   y1:l.y1,
+   x2:l.x1+L*Math.cos(r),
+   y2:l.y1+L*Math.sin(r)
+ };
+ updateLineFields();
+ draw();
+ setStatus("Seina pikkus muudetud – "+Math.round(L)+" mm");
+ return true;
+}
+
+applyLine.onclick=()=>applySelectedLineLengthFromPanel();
+
+// Telefonis/arvutis: Enter või lahtrist väljumine rakendab väärtuse kohe joonisele.
+lineLength.addEventListener("keydown",e=>{
+ if(e.key==="Enter"){
+   e.preventDefault();
+   applySelectedLineLengthFromPanel();
+   lineLength.blur();
+ }
+});
+lineLength.addEventListener("change",()=>{
+ if(selectedLine>=0) applySelectedLineLengthFromPanel();
+});
+
+editLengthBtn.onclick=()=>beginLineEdit("editLength");
+
+
+/* =========================================================
+   AUTO TELLING
+   - AUTO TELLING uses only 2570 mm blocks. Manual block sizes remain unchanged.
+   - Places a continuous scaffold line around a closed shape.
+   - Block outer edge is exactly 300 mm from the wall:
+       300 mm wall clearance + 732 mm block width = 1032 mm
+     from wall to the outside edge.
+   - Each wall is calculated independently.
+   - The block chain starts 732 mm before the wall start,
+     matching the manual first-block rule.
+   - Chooses the combination with the smallest end overhang;
+     if several are equal, uses fewer blocks.
+   ========================================================= */
+
+const AUTO_BLOCK_LENGTHS=[2570];
+const AUTO_BLOCK_WIDTH=732;
+const AUTO_WALL_GAP=300;
+const AUTO_OUTSIDE=1032;
+
+function autoOrderClosedWalls(){
+  if(lines.length<3)return null;
+
+  // Joonistatud maja võib sisaldada väikest hiire-/ümardamisviga.
+  // AUTO kasutab nurga sulgemiseks maksimaalselt 1032 mm: 300 mm seinavahe + 732 mm ploki laius.
+  // Kasutaja seinu ei muudeta.
+  const tol=AUTO_OUTSIDE;
+  const used=new Set();
+  const ordered=[];
+
+  // Start from the first drawn wall. At every step find the unused wall
+  // whose endpoint is closest to the current endpoint. Reverse its
+  // direction when necessary. This means AUTO TELLING works even when
+  // the user drew the walls in a different order or direction.
+  let current={
+    x1:lines[0].x1,y1:lines[0].y1,
+    x2:lines[0].x2,y2:lines[0].y2
+  };
+  ordered.push(current);
+  used.add(0);
+
+  while(ordered.length<lines.length){
+    const ex=current.x2, ey=current.y2;
+    let best=-1, bestReverse=false, bestDist=Infinity;
+
+    lines.forEach((l,i)=>{
+      if(used.has(i))return;
+
+      const dStart=Math.hypot(l.x1-ex,l.y1-ey);
+      const dEnd=Math.hypot(l.x2-ex,l.y2-ey);
+
+      if(dStart<bestDist){
+        best=i; bestReverse=false; bestDist=dStart;
+      }
+      if(dEnd<bestDist){
+        best=i; bestReverse=true; bestDist=dEnd;
+      }
+    });
+
+    if(best<0 || bestDist>tol)return null;
+
+    const l=lines[best];
+    current=bestReverse
+      ? {x1:l.x2,y1:l.y2,x2:l.x1,y2:l.y1}
+      : {x1:l.x1,y1:l.y1,x2:l.x2,y2:l.y2};
+
+    ordered.push(current);
+    used.add(best);
+  }
+
+  const closeDist=Math.hypot(
+    ordered[ordered.length-1].x2-ordered[0].x1,
+    ordered[ordered.length-1].y2-ordered[0].y1
+  );
+
+  if(closeDist>tol)return null;
+
+  // AUTO treats a small final gap as the intended corner. The original
+  // building lines stay untouched; only the internal AUTO contour is closed.
+  ordered[ordered.length-1].x2=ordered[0].x1;
+  ordered[ordered.length-1].y2=ordered[0].y1;
+
+  return ordered;
+}
+
+function autoIsClosedShape(){
+  return !!autoOrderClosedWalls();
+}
+
+
+function autoShapeCentroid(){
+  const pts=lines.map(l=>({x:l.x1,y:l.y1}));
+  let area=0,cx=0,cy=0;
+
+  for(let i=0;i<pts.length;i++){
+    const p=pts[i],q=pts[(i+1)%pts.length];
+    const cross=p.x*q.y-q.x*p.y;
+    area+=cross;
+    cx+=(p.x+q.x)*cross;
+    cy+=(p.y+q.y)*cross;
+  }
+
+  if(Math.abs(area)<1){
+    const x=pts.reduce((s,p)=>s+p.x,0)/pts.length;
+    const y=pts.reduce((s,p)=>s+p.y,0)/pts.length;
+    return {x,y};
+  }
+
+  area/=2;
+  return {
+    x:cx/(6*area),
+    y:cy/(6*area)
+  };
+}
+
+function autoOptimalBlocks(target){
+  const lengths=[...AUTO_BLOCK_LENGTHS]
+    .filter(v=>Number.isFinite(v)&&v>0)
+    .map(v=>Math.round(v))
+    .sort((a,b)=>b-a);
+
+  if(!lengths.length)return null;
+
+  target=Math.max(0,Math.floor(target));
+
+  /*
+    Eesmärk:
+    - mitte kunagi ületada seina vajalikku pikkust;
+    - saada võimalikult väike lõpuvahe;
+    - võrdse lõpuvahe korral kasutada vähem plokke;
+    - AUTO puhul on lubatud ainult 2570 mm moodul.
+
+    Kuna kõige suurem moodul on 3070 mm, arvutame optimaalse
+    kombinatsiooni jäägi järgi. See töötab ka väga pikkadel seintel.
+  */
+  const base=lengths[0];
+  const others=lengths.slice(1);
+  const INF=Infinity;
+
+  // dp[r] = kõige väiksem summa, mis annab jäägi r mod base.
+  const dp=new Array(base).fill(INF);
+  const count=new Array(base).fill(INF);
+  const prev=new Array(base).fill(null);
+
+  dp[0]=0;
+  count[0]=0;
+
+  // Positiivsete plokkide tõttu stabiliseerub see piiratud arvuga
+  // läbimistega ning ei sõltu seina kogupikkusest.
+  for(let pass=0;pass<base;pass++){
+    let changed=false;
+
+    for(let r=0;r<base;r++){
+      if(!Number.isFinite(dp[r]))continue;
+
+      for(const len of others){
+        const nr=(r+len)%base;
+        const ns=dp[r]+len;
+        const nc=count[r]+1;
+
+        if(ns<dp[nr] || (ns===dp[nr] && nc<count[nr])){
+          dp[nr]=ns;
+          count[nr]=nc;
+          prev[nr]={from:r,len};
+          changed=true;
+        }
+      }
+    }
+
+    if(!changed)break;
+  }
+
+  let bestSum=-1;
+  let bestCount=Infinity;
+  let bestR=0;
+
+  for(let r=0;r<base;r++){
+    if(!Number.isFinite(dp[r]))continue;
+    if(dp[r]>target)continue;
+
+    const extra=Math.floor((target-dp[r])/base);
+    const sum=dp[r]+extra*base;
+    const blocksCount=count[r]+extra;
+
+    if(
+      sum>bestSum ||
+      (sum===bestSum && blocksCount<bestCount)
+    ){
+      bestSum=sum;
+      bestCount=blocksCount;
+      bestR=r;
+    }
+  }
+
+  if(bestSum<0)return null;
+
+  const result=[];
+  let r=bestR;
+
+  while(r!==0){
+    const step=prev[r];
+    if(!step)break;
+    result.push(step.len);
+    r=step.from;
+  }
+
+  const otherTotal=result.reduce((s,v)=>s+v,0);
+  const baseCount=Math.floor((bestSum-otherTotal)/base);
+
+  for(let i=0;i<baseCount;i++)result.push(base);
+
+  result.reverse();
+
+  const gap=target-bestSum;
+
+  return {
+    lengths:result,
+    total:bestSum,
+    overhang:0,
+    gap,
+    count:result.length
+  };
+}
+
+
+function autoWallSide(wall,polygon){
+  const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+  const L=Math.hypot(dx,dy)||1;
+  const ux=dx/L,uy=dy/L;
+  let area=0;
+  for(let i=0;i<polygon.length;i++){
+    const a=polygon[i],b=polygon[(i+1)%polygon.length];
+    area += a.x*b.y-b.x*a.y;
+  }
+  const ccw=area>0;
+  const nx=ccw ? uy : -uy;
+  const ny=ccw ? -ux : ux;
+  return {ux,uy,nx,ny,L};
+}
+
+
+function autoCreateBlock(wall,wallIndex,side,alongStart,length){
+  const {ux,uy,nx,ny}=side;
+
+  // Centerline is 300 mm + half block width from the wall.
+  const centerOffset=AUTO_WALL_GAP+AUTO_BLOCK_WIDTH/2;
+
+  const centerAlong=alongStart+length/2;
+
+  return {
+    x:wall.x1+ux*centerAlong+nx*centerOffset,
+    y:wall.y1+uy*centerAlong+ny*centerOffset,
+    length,
+    angle:Math.atan2(uy,ux)*180/Math.PI,
+    _wallIndex:wallIndex,
+    _autoWall:wall,
+    _orientationFixed:false,
+    _auto:true,
+    _hasWallBase:true
+  };
+}
+
+function autoArrangeScaffold(){
+  if(lines.length<3){
+    setStatus("AUTO TELLING vajab vähemalt 3 seina");
+    return;
+  }
+
+  const autoWalls=autoOrderClosedWalls();
+  if(!autoWalls){
+    setStatus("AUTO TELLING: nurkade vahe peab olema kuni 1032 mm");
+    return;
+  }
+
+  // Maja tegelik kontuur määrab iga seina väliskülje.
+  const autoPoints=autoWalls.map(l=>({x:l.x1,y:l.y1}));
+  const newBlocks=[];
+
+  // Calculate every wall separately. No perimeter-wide calculation.
+  autoWalls.forEach((wall,wallIndex)=>{
+    // LEGO-loogika: iga sein on omaette "rida".
+    // Plokid lähevad otsast-otsa, seinast 300 mm kaugusele.
+    // Suund võetakse alati selle konkreetse seina järgi.
+    const side=autoWallSide(wall,autoPoints);
+
+    // NURK: kõrvalseinte plokid peavad nurgas "LEGO moodi" kokku
+    // jooksma, mitte üksteise peale ristuma.
+    //
+    // 300 mm seinavahe tähendab, et esimese ploki ots tuleb seina
+    // nurgast 300 mm tagasi. Ploki 732 mm laius moodustab siis
+    // täpselt nurga teise rea vastu.
+    //
+    // Seega iga seina rida:
+    //   algus = -300 mm
+    //   vajalik kogupikkus = seina pikkus + 300 mm
+    //
+    // Ülejääk jagatakse plokkide valiku kaudu minimaalseks.
+    const target=side.L;
+    const plan=autoOptimalBlocks(Math.round(target));
+
+    if(!plan)return;
+
+    // Esimene plokk algab 300 mm enne seina alguspunkti.
+    let along=0;
+
+    plan.lengths.forEach(length=>{
+      newBlocks.push(
+        autoCreateBlock(wall,wallIndex,side,along,length)
+      );
+      along+=length;
+    });
+  });
+
+  if(!newBlocks.length){
+    setStatus("Sobivaid tellinguplokke ei leitud");
+    return;
+  }
+
+  // Safety check: every AUTO block must be parallel to its own wall
+  // and exactly 300 mm clear of that wall.
+  const invalid=newBlocks.find(b=>{
+    const wall=b._autoWall || lines[b._wallIndex];
+    if(!wall)return true;
+    const wallAngle=Math.atan2(wall.y2-wall.y1,wall.x2-wall.x1)*180/Math.PI;
+    const da=Math.abs((((b.angle-wallAngle)+180)%360)-180);
+    return da>0.01 || Math.abs(blockWallClearanceExact(b,wall)-AUTO_WALL_GAP)>1;
+  });
+  if(invalid){
+    setStatus("AUTO TELLING kontroll ebaõnnestus – plokke ei paigutatud");
+    return;
+  }
+
+  // One undo restores the complete previous arrangement.
+  pushHistory();
+
+  // AUTO TELLING replaces the current scaffold blocks, but does not
+  // touch the building lines.
+  blocks.splice(0,blocks.length,...newBlocks);
+
+  selectedBlock=-1;
+  selectedLine=-1;
+  activate("select");
+
+  updateBlockFields();
+  draw();
+
+  const total=newBlocks.reduce((s,b)=>s+b.length,0);
+  const wallCount=autoWalls.length;
+  setStatus(
+    "AUTO TELLING valmis – "+wallCount+" seina, "+
+    newBlocks.length+" plokki, "+Math.round(total)+" mm"
+  );
+}
+
+
+const blockTypePicker=document.getElementById("blockTypePicker");
+const blockTypeOptions=document.getElementById("blockTypeOptions");
+let pickerBlockIndex=-1;
+
+function closeBlockTypePicker(){
+  if(blockTypePicker)blockTypePicker.style.display="none";
+  pickerBlockIndex=-1;
+}
+
+function openBlockTypePicker(index,clientX,clientY){
+  if(index<0 || !blocks[index] || !blockTypePicker)return;
+  pickerBlockIndex=index;
+
+  blockTypeOptions.innerHTML="";
+  const types=[
+    [3070,"3070 × 732 mm"],
+    [2570,"2570 × 732 mm"],
+    [2070,"2070 × 732 mm"],
+    [1570,"1570 × 732 mm"],
+    [1400,"1400 × 732 mm"],
+    [1090,"1090 × 732 mm"],
+    [730,"730 × 732 mm"]
+  ];
+
+  types.forEach(([L,label])=>{
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.textContent=label;
+    btn.onclick=()=>{
+      const i=pickerBlockIndex;
+      if(i<0 || !blocks[i])return;
+
+      const b=blocks[i];
+      pushHistory();
+
+      // Keep the block's centre and direction. Only change its module length.
+      b.length=L;
+
+      // Preserve wall association and the 300 mm wall clearance.
+      if(Number.isInteger(b._wallIndex) && lines[b._wallIndex]){
+        enforceMinimumWallClearance(b);
+      }
+
+      selectedBlock=i;
+      selectedLine=-1;
+      closeBlockTypePicker();
+      updateBlockFields();
+      draw();
+      setStatus("Plokk muudetud: "+label);
+    };
+    blockTypeOptions.appendChild(btn);
+  });
+
+  blockTypePicker.style.display="block";
+
+  // Keep the picker inside the viewport.
+  const pad=8;
+  const rect=blockTypePicker.getBoundingClientRect();
+  let x=clientX+10, y=clientY+10;
+  if(x+rect.width>window.innerWidth-pad)x=window.innerWidth-rect.width-pad;
+  if(y+rect.height>window.innerHeight-pad)y=window.innerHeight-rect.height-pad;
+  blockTypePicker.style.left=Math.max(pad,x)+"px";
+  blockTypePicker.style.top=Math.max(pad,y)+"px";
+}
+
+document.addEventListener("click",e=>{
+  if(e.target.closest("#blockTypePicker"))return;
+
+  const p=mouse(e);
+  const w=sw(p.x,p.y);
+  const i=findBlock(w);
+
+  if(i>=0){
+    e.preventDefault();
+    e.stopPropagation();
+    selectedBlock=i;
+    selectedLine=-1;
+    updateBlockFields();
+    draw();
+    openBlockTypePicker(i,e.clientX,e.clientY);
+  }
+});
+
+document.addEventListener("pointerdown",e=>{
+  if(blockTypePicker && blockTypePicker.style.display==="block" &&
+     !e.target.closest("#blockTypePicker")){
+    closeBlockTypePicker();
+  }
+},true);
+document.querySelectorAll(".block").forEach(btn=>{
+ btn.onclick=()=>{
+   const L=Number(btn.dataset.length);
+   const A=Number(btn.dataset.angle||0);
+   pushHistory();
+   const b={
+     x:0,y:0,length:L,
+     angle:Number.isFinite(A)?A:0,
+     _orientationFixed:(A===90)
+   };
+   blocks.push(b);
+   // The first block keeps the established -732 mm base.
+   // Other blocks start free and are constrained only by the 300 mm rule.
+   if(!blocks.some(other=>other!==b && Number.isInteger(other._wallIndex))){
+     snapFirstBlockToWallBase(b);
+   }
+   enforceMinimumWallClearance(b);
+   selectedBlock=blocks.length-1;selectedLine=-1;
+   activate("select");
+   selectedBlock=blocks.length-1;
+   updateBlockFields();
+   setStatus("Plokk lisatud – liiguta hiirega");
+   draw();
+ };
+});
+
+function applySelectedBlockAngle(A){
+ if(selectedBlock<0)return false;
+ const b=blocks[selectedBlock];
+ if(b._orientationFixed){
+   setStatus("Selle vertikaalse ploki suund on fikseeritud");
+   return false;
+ }
+ if(!Number.isFinite(A))return false;
+ pushHistory();
+ b.angle=((A%360)+360)%360;
+ b._wallIndex=undefined;
+ snapExistingBlockToNearestWall(b);
+ enforceMinimumWallClearance(b);
+ updateBlockFields();
+ draw();
+ return true;
+}
+
+document.querySelectorAll(".dirBtn").forEach(btn=>{
+ btn.onclick=()=>{
+   const A=Number(btn.dataset.dir);
+   applySelectedBlockAngle(A);
+ };
+});
+
+applyBlockLength.onclick=()=>{
+ if(selectedBlock<0)return;
+ const L=Number(String(blockLength.value).replace(",","."));
+ if(!Number.isFinite(L)||L<=0){
+   setStatus("Sisesta korrektne pikkus");
+   return;
+ }
+ pushHistory();
+ const b=blocks[selectedBlock];
+ b.length=L;
+ enforceMinimumWallClearance(b);
+ updateBlockFields();
+ draw();
+ setStatus("Ploki pikkus muudetud – "+Math.round(L)+" mm");
+};
+
+rotateLeft.onclick=()=>{
+ if(selectedBlock<0)return;
+ applySelectedBlockAngle(blocks[selectedBlock].angle-15);
+};
+
+rotateRight.onclick=()=>{
+ if(selectedBlock<0)return;
+ applySelectedBlockAngle(blocks[selectedBlock].angle+15);
+};
+
+applyAngle.onclick=()=>{
+ const A=Number(String(blockAngle.value).replace(",","."));
+ applySelectedBlockAngle(A);
+};
+
+function create1715Preset(){
+  // 17 000 × 15 000 mm maja: paremale → alla → vasakule → üles.
+  // Pärast kuju loomist käivitub kohe AUTO TELLING.
+  pushHistory();
+
+  const w=17000, h=15000;
+  const x0=0, y0=0;
+
+  lines=[
+    {x1:x0,y1:y0,x2:x0+w,y2:y0},
+    {x1:x0+w,y1:y0,x2:x0+w,y2:y0+h},
+    {x1:x0+w,y1:y0+h,x2:x0,y2:y0+h},
+    {x1:x0,y1:y0+h,x2:x0,y2:y0}
+  ];
+
+  blocks=[];
+  selectedLine=-1;
+  selectedBlock=-1;
+  allSelected=false;
+  first=null;
+  preview=null;
+  editMode="draw";
+  editLineIndex=-1;
+  hideDynamic();
+
+  activate("select");
+  updateLineFields();
+  updateBlockFields();
+  draw();
+
+  // Auto-paigutus kõikidele neljale seinale.
+  autoArrangeScaffold();
+  setStatus("17 × 15 m maja loodud ja AUTO TELLING paigutatud");
+}
+
+preset1715Btn.onclick=()=>{
+  create1715Preset();
+};autoScaffoldBtn.onclick=()=>{
+  autoArrangeScaffold();
+};
+
+
+// PDF / SHARE EXPORT
+// Creates a real PDF in-browser so it can be downloaded or shared as an attachment.
+let currentPdfBaseName="MAXCAD_joonis";
+
+function sanitizePdfName(name){
+  return String(name||"").trim().replace(/[\\/:*?"<>|]/g,"_").replace(/\s+/g,"_").replace(/\.pdf$/i,"") || "MAXCAD_joonis";
+}
+
+function jpegSizeFromDataUrl(dataUrl){
+  const b64=dataUrl.split(",")[1]||"";
+  const bin=atob(b64);
+  let i=2;
+  while(i<bin.length){
+    if(bin.charCodeAt(i)!==0xFF){i++;continue;}
+    const marker=bin.charCodeAt(i+1);
+    const len=(bin.charCodeAt(i+2)<<8)|bin.charCodeAt(i+3);
+    if(marker>=0xC0 && marker<=0xC3){
+      return {width:(bin.charCodeAt(i+7)<<8)|bin.charCodeAt(i+8),height:(bin.charCodeAt(i+5)<<8)|bin.charCodeAt(i+6)};
+    }
+    i+=2+len;
+  }
+  return {width:canvas.width,height:canvas.height};
+}
+
+function base64ToUint8(b64){
+  const bin=atob(b64), out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
+  return out;
+}
+
+function getBlockScheduleRows(){
+ const groups=new Map();
+ blocks.forEach(b=>{const len=Number(b.length);if(!Number.isFinite(len)||len<=0)return;const key=Math.round(len);const g=groups.get(key)||{count:0,total:0};g.count++;g.total+=len;groups.set(key,g)});
+ return [...groups.entries()].sort((a,b)=>a[0]-b[0]);
+}
+function renderHighResExport(){
+ const oldW=canvas.width,oldH=canvas.height,oldTransform=ctx.getTransform();
+ const d=Math.max(4,Math.min(6,Math.floor(Math.sqrt(30000000/(Math.max(1,W)*Math.max(1,H))))));
+ const ew=Math.max(1,Math.round(W*d)),eh=Math.max(1,Math.round(H*d));
+ canvas.width=ew;canvas.height=eh;ctx.setTransform(d,0,0,d,0,0);
+ try{
+   draw();
+   const out=document.createElement("canvas");out.width=ew;out.height=eh;
+   const oc=out.getContext("2d");oc.imageSmoothingEnabled=false;oc.drawImage(canvas,0,0);
+   return out;
+ }finally{
+   canvas.width=oldW;canvas.height=oldH;ctx.setTransform(oldTransform);draw();
+ }
+}
+
+async function makePdfBlob(fileBaseName){
+  // Reliable vector PDF export. Keep the page within normal PDF viewer limits
+  // and fit the complete drawing to the page. Geometry/text stay vector.
+  const PT_PER_MM=72/25.4;
+  const PAGE_W=420*PT_PER_MM; // A3 landscape
+  const PAGE_H=297*PT_PER_MM;
+  const PAGE_MARGIN=10*PT_PER_MM;
+
+  const bounds=[];
+  if(blocks.length){
+    blocks.forEach(b=>blockGeometry(b).forEach(p=>bounds.push(p)));
+  }
+  if(lines.length){
+    lines.forEach(l=>bounds.push({x:l.x1,y:l.y1},{x:l.x2,y:l.y2}));
+  }
+  savedMeasurements.forEach(m=>bounds.push({x:m.x1,y:m.y1},{x:m.x2,y:m.y2}));
+  if(!bounds.length){bounds.push({x:-5000,y:-3500},{x:5000,y:3500});}
+
+  let minX=Math.min(...bounds.map(p=>p.x)), maxX=Math.max(...bounds.map(p=>p.x));
+  let minY=Math.min(...bounds.map(p=>p.y)), maxY=Math.max(...bounds.map(p=>p.y));
+  const pad=10;
+  minX-=pad; maxX+=pad; minY-=pad; maxY+=pad;
+  const bw=Math.max(1,maxX-minX), bh=Math.max(1,maxY-minY);
+
+  // Fit the full drawing to A3 while retaining vector geometry. Zooming the PDF
+  // remains lossless for CAD lines/text; the imported PDF underlay is the only raster part.
+  const availW=PAGE_W-2*PAGE_MARGIN, availH=PAGE_H-2*PAGE_MARGIN;
+  const scale=Math.min(availW/bw, availH/bh);
+  const ox=PAGE_MARGIN+(availW-bw*scale)/2;
+  const oy=PAGE_MARGIN+(availH-bh*scale)/2;
+  const X=x=>ox+(x-minX)*scale;
+  const Y=y=>PAGE_H-(oy+(y-minY)*scale);
+  const esc=t=>String(t).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+  const cmds=[];
+  const line=(x1,y1,x2,y2,w=.8)=>cmds.push(`${w.toFixed(2)} w 0 0 0 RG ${X(x1).toFixed(2)} ${Y(y1).toFixed(2)} m ${X(x2).toFixed(2)} ${Y(y2).toFixed(2)} l S`);
+  const text=(x,y,t,size=9,color='0 0 0',angle=0)=>{
+    const a=angle*Math.PI/180,c=Math.cos(a),si=Math.sin(a);
+    const fs=Math.max(5,size);
+    cmds.push(`q ${color} rg ${c.toFixed(6)} ${si.toFixed(6)} ${(-si).toFixed(6)} ${c.toFixed(6)} ${X(x).toFixed(2)} ${Y(y).toFixed(2)} cm BT /F1 ${fs.toFixed(2)} Tf 0 0 Td (${esc(t)}) Tj ET Q`);
+  };
+  const pageText=(px,py,t,size=9,color='0 0 0')=>{
+    // Use an explicit text matrix. This is more reliable in Android PDF viewers
+    // than applying the page position through a graphics-state CM.
+    cmds.push(`q ${color} rg BT /F1 ${size.toFixed(2)} Tf 1 0 0 1 ${px.toFixed(2)} ${py.toFixed(2)} Tm (${esc(t)}) Tj ET Q`);
+  };
+  const poly=(pts,fill,stroke='0 0 0',w=.7)=>{
+    if(!pts.length)return;
+    const p=pts.map((q,i)=>`${X(q.x).toFixed(2)} ${Y(q.y).toFixed(2)} ${i?'l':'m'}`).join(' ');
+    cmds.push(`q ${fill} rg ${stroke} RG ${w.toFixed(2)} w ${p} h B Q`);
+  };
+
+  // Vector grid, kept sparse for a clean export.
+  const gridStep=(bw>50000||bh>50000)?1000:100;
+  const gx0=Math.ceil(minX/gridStep)*gridStep, gy0=Math.ceil(minY/gridStep)*gridStep;
+  for(let x=gx0;x<=maxX;x+=gridStep)line(x,minY,x,maxY,.25);
+  for(let y=gy0;y<=maxY;y+=gridStep)line(minX,y,maxX,y,.25);
+
+  // Optional imported PDF underlay. It is raster by nature, but cropped to the
+  // drawing bounds and kept behind all vector CAD geometry.
+  let imageObject=null;
+  if(pdfPageCanvas && pdfPageWmm && pdfPageHmm && pdfVisible){
+    try{
+      const sx=Math.max(0,Math.floor(((minX + pdfPageWmm/2)/pdfPageWmm)*pdfPageCanvas.width));
+      const sy=Math.max(0,Math.floor(((minY + pdfPageHmm/2)/pdfPageHmm)*pdfPageCanvas.height));
+      const ex=Math.min(pdfPageCanvas.width,Math.ceil(((maxX + pdfPageWmm/2)/pdfPageWmm)*pdfPageCanvas.width));
+      const ey=Math.min(pdfPageCanvas.height,Math.ceil(((maxY + pdfPageHmm/2)/pdfPageHmm)*pdfPageCanvas.height));
+      const cw=Math.max(1,ex-sx), ch=Math.max(1,ey-sy);
+      const crop=document.createElement('canvas'); crop.width=cw; crop.height=ch;
+      const cc=crop.getContext('2d',{alpha:false});
+      cc.drawImage(pdfPageCanvas,sx,sy,cw,ch,0,0,cw,ch);
+      // JPEG keeps the PDF manageable; all MAXCAD geometry remains vector.
+      const jpg=crop.toDataURL('image/jpeg',0.92);
+      const b64=jpg.split(',')[1];
+      imageObject={w:cw,h:ch,data:base64ToUint8(b64),filter:'/DCTDecode'};
+      const iw=bw*scale, ih=bh*scale;
+      imageObject.matrix=`${iw.toFixed(3)} 0 0 ${ih.toFixed(3)} ${ox.toFixed(3)} ${(PAGE_H-oy-ih).toFixed(3)} cm`;
+    }catch(_){ imageObject=null; }
+  }
+
+  // Walls, full lengths and the actual leftover gaps at the wall ends/between blocks.
+  function wallIntervals(wall){
+    const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+    const L=Math.hypot(dx,dy)||1, ux=dx/L, uy=dy/L, nx=-uy, ny=ux;
+    const ints=[];
+    blocks.forEach(bl=>{
+      const ba=bl.angle*Math.PI/180, bx=Math.cos(ba), by=Math.sin(ba);
+      if(Math.abs(bx*ux+by*uy)<0.94)return;
+      const side=(bl.x-wall.x1)*nx+(bl.y-wall.y1)*ny;
+      const along=(bl.x-wall.x1)*ux+(bl.y-wall.y1)*uy;
+      if(Math.abs(side)>1400)return;
+      const a=Math.max(0,along-bl.length/2), b=Math.min(L,along+bl.length/2);
+      if(b>a)ints.push([a,b]);
+    });
+    ints.sort((a,b)=>a[0]-b[0]);
+    const merged=[];
+    ints.forEach(iv=>{
+      const last=merged[merged.length-1];
+      if(last && iv[0]<=last[1]+1) last[1]=Math.max(last[1],iv[1]);
+      else merged.push(iv.slice());
+    });
+    const gaps=[]; let cur=0;
+    merged.forEach(iv=>{if(iv[0]-cur>1)gaps.push([cur,iv[0]]);cur=Math.max(cur,iv[1]);});
+    if(L-cur>1)gaps.push([cur,L]);
+    return {L,ux,uy,nx,ny,gaps};
+  }
+  lines.forEach(l=>{
+    cmds.push(`q 1 0.45 0.00 RG 2.20 w ${X(l.x1).toFixed(2)} ${Y(l.y1).toFixed(2)} m ${X(l.x2).toFixed(2)} ${Y(l.y2).toFixed(2)} l S Q`);
+    const L=Math.hypot(l.x2-l.x1,l.y2-l.y1);
+    const ang=Math.atan2(l.y2-l.y1,l.x2-l.x1)*180/Math.PI;
+    const a=ang>90||ang<-90?ang+180:ang;
+    const mx=(l.x1+l.x2)/2, my=(l.y1+l.y2)/2;
+    const nx=-(l.y2-l.y1)/(L||1), ny=(l.x2-l.x1)/(L||1);
+    text(mx+nx*180,my+ny*180,Math.round(L)+' mm',10,'0 0 0',a);
+    const wi=wallIntervals(l);
+    wi.gaps.forEach(g=>{
+      const gLen=g[1]-g[0];
+      if(gLen<5)return;
+      const p1={x:l.x1+wi.ux*g[0]+wi.nx*320,y:l.y1+wi.uy*g[0]+wi.ny*320};
+      const p2={x:l.x1+wi.ux*g[1]+wi.nx*320,y:l.y1+wi.uy*g[1]+wi.ny*320};
+      line(p1.x,p1.y,p2.x,p2.y,0.8);
+      const mx2=(p1.x+p2.x)/2,my2=(p1.y+p2.y)/2;
+      text(mx2,my2,Math.round(gLen)+' mm',8.5,'0 0 0',a);
+    });
+  });
+
+  // Scaffolding blocks — exact rotated rectangles, matching the on-screen drawing.
+  blocks.forEach(b=>{
+    // Exact same four-corner rectangle as the drawing canvas.
+    poly(blockGeometry(b),'0.08 0.66 0.28','0.04 0.55 0.20',1.0);
+    const ba=b.angle*Math.PI/180;
+    const labelOffset=18;
+    text(b.x,b.y-labelOffset,`${Math.round(b.length)} × 732 mm`,8.5,'0 0 0',b.angle);
+  });
+
+  savedMeasurements.forEach(m=>{
+    cmds.push(`[4 3] 0 d 0 0.65 0.84 RG 1 w ${X(m.x1).toFixed(2)} ${Y(m.y1).toFixed(2)} m ${X(m.x2).toFixed(2)} ${Y(m.y2).toFixed(2)} l S [] 0 d`);
+    text((m.x1+m.x2)/2,(m.y1+m.y2)/2,Math.round(m.distance)+' mm',9,'0 0 0',Math.atan2(m.y2-m.y1,m.x2-m.x1)*180/Math.PI);
+  });
+
+  // PDF summary: the same block schedule as MAXCAD, moved to the upper-left
+  // inside an orange frame. The total row is intentionally omitted.
+  const rows=getBlockScheduleRows();
+  const totalPerimeter=lines.reduce((sum,l)=>sum+Math.hypot(l.x2-l.x1,l.y2-l.y1),0);
+  function calculateDrawingAreaM2(){
+    if(lines.length<3)return 0;
+    const pts=[]; const tol=2;
+    const getPoint=p=>{
+      let q=pts.find(v=>Math.hypot(v.x-p.x,v.y-p.y)<=tol);
+      if(!q){q={x:p.x,y:p.y};pts.push(q);} return q;
+    };
+    const segs=lines.map(l=>({a:getPoint({x:l.x1,y:l.y1}),b:getPoint({x:l.x2,y:l.y2})}));
+    const unused=segs.slice(); let bestArea=0;
+    while(unused.length){
+      const first=unused.shift(); const chain=[first.a,first.b]; let current=first.b,guard=0;
+      while(guard++<segs.length+5){
+        if(Math.hypot(current.x-chain[0].x,current.y-chain[0].y)<=tol)break;
+        const idx=unused.findIndex(s=>s.a===current||s.b===current);
+        if(idx<0)break;
+        const seg=unused.splice(idx,1)[0]; current=seg.a===current?seg.b:seg.a; chain.push(current);
+      }
+      if(chain.length>=4 && Math.hypot(current.x-chain[0].x,current.y-chain[0].y)<=tol){
+        let a=0; for(let i=0;i<chain.length-1;i++)a+=chain[i].x*chain[i+1].y-chain[i+1].x*chain[i].y;
+        bestArea=Math.max(bestArea,Math.abs(a)/2/1000000);
+      }
+    }
+    return bestArea;
+  }
+  const areaM2=calculateDrawingAreaM2();
+  const title='PLOKID / NIMIKIRI';
+  const perimeterText=`KOGU PERIMEETRI PIKKUS: ${Math.round(totalPerimeter)} mm`;
+  const areaText=`PINDALA: ${areaM2.toFixed(2)} m²`;
+  const rowsForPdf=rows.length?rows:[['—',{count:0,total:0}]];
+  const col=[82,38,38,70];
+  const tableW=col.reduce((a,b)=>a+b,0);
+  const rowH=17, headerH=20;
+  const infoPad=9;
+  const tableH=headerH+rowsForPdf.length*rowH;
+  const boxW=tableW+infoPad*2;
+  const boxH=tableH+58;
+  const sumX=PAGE_MARGIN+10;
+  const sumTop=PAGE_H-PAGE_MARGIN-10;
+  const boxY=sumTop-boxH;
+  // Orange frame + white background. All lettering is black.
+  cmds.push(`q 1 1 1 rg 1 0.45 0.00 RG 1.5 w ${sumX.toFixed(2)} ${boxY.toFixed(2)} ${boxW.toFixed(2)} ${boxH.toFixed(2)} re B Q`);
+  pageText(sumX+infoPad,sumTop-15,title,12,'0 0 0');
+  const tx=sumX+infoPad, ty=sumTop-24;
+  cmds.push(`q 0 0 0 RG 0.5 w ${tx.toFixed(2)} ${(ty-tableH).toFixed(2)} ${tableW.toFixed(2)} ${tableH.toFixed(2)} re S Q`);
+  const headers=['SUURUS','KOGUS','ÜKSUS','KOKKU'];
+  let cx=tx;
+  for(let i=0;i<col.length-1;i++){cx+=col[i];cmds.push(`0 0 0 RG 0.5 w ${cx.toFixed(2)} ${(ty-tableH).toFixed(2)} m ${cx.toFixed(2)} ${ty.toFixed(2)} l S`);}
+  cmds.push(`0 0 0 RG 0.5 w ${tx.toFixed(2)} ${(ty-headerH).toFixed(2)} m ${(tx+tableW).toFixed(2)} ${(ty-headerH).toFixed(2)} l S`);
+  cx=tx; headers.forEach((h,i)=>{pageText(cx+5,ty-14,h,8,'0 0 0');cx+=col[i];});
+  rowsForPdf.forEach((r,ri)=>{
+    const len=r[0],g=r[1]; const vals=[`${len} mm`,String(g.count),'mm',`${Math.round(g.total)} mm`];
+    let x=tx; vals.forEach((v,i)=>{pageText(x+5,ty-headerH-13-ri*rowH,v,8,'0 0 0');x+=col[i];});
+    if(ri<rowsForPdf.length-1){const y=ty-headerH-(ri+1)*rowH;cmds.push(`0 0 0 RG 0.5 w ${tx.toFixed(2)} ${y.toFixed(2)} m ${(tx+tableW).toFixed(2)} ${y.toFixed(2)} l S`);}
+  });
+  const infoY=ty-tableH-18;
+  pageText(tx,infoY,perimeterText,9,'0 0 0');
+  pageText(tx,infoY-15,areaText,9,'0 0 0');
+  pageText(PAGE_W-PAGE_MARGIN-150,12,fileBaseName+'.pdf',7,'0 0 0');
+
+  let content=cmds.join('\n');
+  if(imageObject){content=`q\n${imageObject.matrix}\n/Im1 Do\nQ\n${content}`;}
+  const enc=new TextEncoder(), contentBytes=enc.encode(content), objects=[];
+  objects.push({parts:[`<< /Type /Catalog /Pages 2 0 R >>`]});
+  objects.push({parts:[`<< /Type /Pages /Kids [3 0 R] /Count 1 >>`]});
+  // Keep PDF object references valid in both cases (with and without imported PDF underlay).
+  // Object 1=Catalog, 2=Pages, 3=Page, 4=Content. The font is always the next object;
+  // the optional image follows it. This avoids broken PDFs when no imported PDF is loaded.
+  const fontObjNo=5;
+  const imageObjNo=imageObject?6:null;
+  const xobj=imageObject?` /XObject << /Im1 ${imageObjNo} 0 R >>`:'';
+  objects.push({parts:[`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W.toFixed(3)} ${PAGE_H.toFixed(3)}] /Resources <<${xobj} /Font << /F1 ${fontObjNo} 0 R >> >> /Contents 4 0 R >>`]});
+  objects.push({parts:[`<< /Length ${contentBytes.length} >>\nstream\n`,content,`\nendstream`]});
+  objects.push({parts:[`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>`]});
+  if(imageObject){
+    objects.push({parts:[`<< /Type /XObject /Subtype /Image /Width ${imageObject.w} /Height ${imageObject.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter ${imageObject.filter} /Length ${imageObject.data.length} >>\nstream\n`,imageObject.data,`\nendstream`]});
+  }
+
+  const chunks=[], offsets=[0]; let pos=0;
+  const add=t=>{const b=typeof t==='string'?enc.encode(t):t;chunks.push(b);pos+=b.length;};
+  add('%PDF-1.4\n%\xFF\xFF\xFF\xFF\n');
+  for(let i=0;i<objects.length;i++){offsets[i+1]=pos;add(`${i+1} 0 obj\n`);for(const part of objects[i].parts)add(part);add('\nendobj\n');}
+  const xref=pos; add(`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`);
+  for(let i=1;i<=objects.length;i++)add(String(offsets[i]).padStart(10,'0')+' 00000 n \n');
+  add(`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(chunks,{type:'application/pdf'});
+}
+async function downloadPdf(fileBaseName){
+  const blob=await makePdfBlob(fileBaseName);
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=fileBaseName+".pdf";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  setStatus("PDF salvestatud: "+fileBaseName+".pdf");
+}
+
+const pdfBtn=document.getElementById("pdfBtn");
+if(pdfBtn)pdfBtn.onclick=()=>{
+  const name=sanitizePdfName(prompt("PDF faili nimi:",currentPdfBaseName));
+  currentPdfBaseName=name;
+  downloadPdf(name);
+};
+
+function closeSharePdf(){
+  const m=document.getElementById("pdfShareModal");
+  if(!m)return;
+  m.classList.remove("show");
+  m.setAttribute("aria-hidden","true");
+}
+function openSharePdf(){
+  const m=document.getElementById("pdfShareModal");
+  const input=document.getElementById("pdfShareName");
+  if(!m||!input)return;
+  input.value=currentPdfBaseName;
+  m.classList.add("show");
+  m.setAttribute("aria-hidden","false");
+  setTimeout(()=>{input.focus();input.select();},30);
+}
+function getSharePdfName(){
+  const input=document.getElementById("pdfShareName");
+  const name=sanitizePdfName(input?.value||currentPdfBaseName);
+  currentPdfBaseName=name;
+  if(input)input.value=name;
+  return name;
+}
+
+document.getElementById("pdfSaveChoice").onclick=()=>{
+  const name=getSharePdfName();
+  closeSharePdf();
+  downloadPdf(name);
+};
+
+document.getElementById("pdfShareChoice").onclick=async()=>{
+ const name=getSharePdfName();closeSharePdf();const blob=await makePdfBlob(name);const file=new File([blob],name+".pdf",{type:"application/pdf"});
+ if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){try{await navigator.share({title:name+".pdf",text:"MAXCAD joonis",files:[file]});setStatus("PDF saadetud jagamise kaudu");return;}catch(e){if(e?.name==="AbortError")return;}}
+ const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=name+".pdf";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);setStatus("PDF salvestatud");
+};
+
+document.getElementById("pdfShareCancel").onclick=closeSharePdf;
+document.getElementById("pdfShareModal").addEventListener("pointerdown",e=>{
+  if(e.target.id==="pdfShareModal")closeSharePdf();
+});
+document.getElementById("shareBtn").onclick=openSharePdf;
+
+
+const autocadStyleBtn=document.getElementById("autocadStyleBtn");
+let autocadStyle=false;
+autocadStyleBtn.onclick=()=>{
+ autocadStyle=!autocadStyle;
+ document.body.classList.toggle("autocad-mode",autocadStyle);
+ autocadStyleBtn.textContent=autocadStyle?"MAXCAD STIIL":"AUTOCAD STIIL";
+ draw();
+};
+
+
+/* 30 cm line-lock for joystick block movement.
+   IMPORTANT: the 300 mm is measured from the LINE to the nearest BLOCK EDGE,
+   exactly like AUTO TELLING — not from the block centre.
+*/
+let maxcadJoystickLineLock=null;
+
+function maxcadLineHitForPoint(px,py){
+  if(typeof lines==="undefined" || !Array.isArray(lines) || !lines.length)return null;
+  let best=null;
+  lines.forEach((wall,index)=>{
+    const dx=wall.x2-wall.x1,dy=wall.y2-wall.y1;
+    const L=Math.hypot(dx,dy)||1;
+    const ux=dx/L,uy=dy/L;
+    const nx=-uy,ny=ux;
+    let t=(px-wall.x1)*ux+(py-wall.y1)*uy;
+    t=Math.max(0,Math.min(L,t));
+    const qx=wall.x1+ux*t,qy=wall.y1+uy*t;
+    const distance=Math.hypot(px-qx,py-qy);
+    if(!best || distance<best.distance)
+      best={wall,index,L,ux,uy,nx,ny,t,qx,qy,distance};
+  });
+  return best;
+}
+
+function maxcadParallelHalfNormal(block,ux,uy){
+  const a=block.angle*Math.PI/180;
+  const bx=Math.cos(a),by=Math.sin(a);
+  const bnx=-by,bny=bx;
+  return Math.abs(bx*(-uy)+by*ux)*(block.length/2) +
+         Math.abs(bnx*(-uy)+bny*ux)*(732/2);
+}
+
+function maxcadLockBlockToLine300(block,hit){
+  /* First make the block parallel to the actual line, exactly as AUTO TELLING. */
+  block.angle=Math.atan2(hit.uy,hit.ux)*180/Math.PI;
+
+  /* For a block parallel to the line, 732 mm is the normal width.
+     Therefore the centre must be 300 + 366 = 666 mm from the line. */
+  const halfNormal=maxcadParallelHalfNormal(block,hit.ux,hit.uy);
+  const centerOffset=MIN_WALL_CLEARANCE+halfNormal;
+
+  const side=((block.x-hit.qx)*hit.nx+(block.y-hit.qy)*hit.ny)>=0?1:-1;
+
+  block.x=hit.qx+hit.nx*side*centerOffset;
+  block.y=hit.qy+hit.ny*side*centerOffset;
+  block._wallIndex=hit.index;
+
+  maxcadJoystickLineLock={
+    index:hit.index,
+    ux:hit.ux,uy:hit.uy,
+    nx:hit.nx,ny:hit.ny,
+    side,
+    clearance:MIN_WALL_CLEARANCE
+  };
+}
+
+function maxcadJoystickCheckLineLock(block){
+  if(maxcadJoystickLineLock)return true;
+
+  const hit=maxcadLineHitForPoint(block.x,block.y);
+  if(!hit)return false;
+
+  /* Do not lock merely because the centre is 300 mm from the line.
+     Check the REAL block-to-line clearance, matching AUTO TELLING. */
+  const actual=blockWallClearanceExact(block,hit.wall);
+
+  if(actual<=MIN_WALL_CLEARANCE){
+    maxcadLockBlockToLine300(block,hit);
+    return true;
+  }
+
+  return false;
+}
+
+function maxcadJoystickMoveLocked(block,dx,dy){
+  const L=maxcadJoystickLineLock;
+  if(!L)return false;
+
+  /* Project the joystick movement onto the line direction.
+     Perpendicular joystick input produces zero movement. */
+  const along=dx*L.ux+dy*L.uy;
+  block.x += L.ux*along;
+  block.y += L.uy*along;
+
+  /* Keep the exact 300 mm edge clearance while sliding. */
+  const wall=lines[L.index];
+  if(wall){
+    const halfNormal=maxcadParallelHalfNormal(block,L.ux,L.uy);
+    const targetOffset=MIN_WALL_CLEARANCE+halfNormal;
+
+    let t=(block.x-wall.x1)*L.ux+(block.y-wall.y1)*L.uy;
+    t=Math.max(0,Math.min(Math.hypot(wall.x2-wall.x1,wall.y2-wall.y1),t));
+    const qx=wall.x1+L.ux*t,qy=wall.y1+L.uy*t;
+
+    block.x=qx+L.nx*L.side*targetOffset;
+    block.y=qy+L.ny*L.side*targetOffset;
+  }
+
+  block.angle=Math.atan2(L.uy,L.ux)*180/Math.PI;
+  block._wallIndex=L.index;
+  return true;
+}
+
+window.maxcadJoystickClearLineLock=function(){ maxcadJoystickLineLock=null; };
+
+window.maxcadJoystickHasSelection=function(){
+  return selectedBlock>=0 && !!blocks[selectedBlock];
+};
+
+window.maxcadJoystickMove=function(dx,dy,dt){
+  if(selectedBlock>=0 && blocks[selectedBlock]){
+    const b=blocks[selectedBlock];
+    const step=700*dt/Math.max(scale,.000001);
+    const mx=dx*step,my=dy*step;
+
+    if(maxcadJoystickLineLock){
+      maxcadJoystickMoveLocked(b,mx,my);
+    }else{
+      b.x += mx;
+      b.y += my;
+
+      /* AUTO TELLING-style trigger:
+         when the real block edge reaches 300 mm from a drawn line,
+         snap to exactly 300 mm and lock parallel movement. */
+      maxcadJoystickCheckLineLock(b);
+    }
+
+    updateBlockFields();
+    draw();
+    return true;
+  }
+
+  if(mode==="line" && first && !preview){
+    const step=700*dt/Math.max(scale,.000001);
+    first.x += dx*step;
+    first.y += dy*step;
+    draw();
+    return true;
+  }
+  return false;
+};
+
+window.maxcadJoystickRotate=function(clientX,clientY){
+  if(selectedBlock<0 || !blocks[selectedBlock]) return false;
+  const r=document.getElementById("mobileRotatePad").getBoundingClientRect();
+  const a=((Math.atan2(
+    clientY-(r.top+r.height/2),
+    clientX-(r.left+r.width/2)
+  )*180/Math.PI)+90+360)%360;
+  blocks[selectedBlock].angle=a;
+  blocks[selectedBlock]._wallIndex=undefined;
+  const knob=document.getElementById("mobileRotateKnob");
+  if(knob)knob.style.transform="rotate("+a+"deg) translateY(-28px)";
+  updateBlockFields();
+  draw();
+  return true;
+};
+
+})();
+resize();
+requestAnimationFrame(()=>resize());
+setTimeout(()=>resize(),120);
+setStatus("Valmis – töölaud on tühi");
+</script>
+<style>
+.blockTypePicker{
+  position:fixed;
+  z-index:10000;
+  display:none;
+  min-width:150px;
+  padding:6px;
+  background:#fff;
+  border:1px solid #222;
+  box-shadow:0 4px 14px rgba(0,0,0,.22);
+  font:12px Arial,sans-serif;
+}
+.blockTypePicker .pickerTitle{
+  padding:5px 7px;
+  font-weight:700;
+  border-bottom:1px solid #ddd;
+  margin-bottom:4px;
+}
+.blockTypePicker button{
+  display:block;
+  width:100%;
+  margin:2px 0;
+  padding:6px 8px;
+  border:1px solid #18a848;
+  background:#f7fff8;
+  color:#15863b;
+  text-align:left;
+  cursor:pointer;
+}
+.blockTypePicker button:hover{
+  background:#dff5e5;
+}
+</style>
+<div id="blockTypePicker" class="blockTypePicker">
+  <div class="pickerTitle">Vali plokk</div>
+  <div id="blockTypeOptions"></div>
+</div>
+<script>
+(function(){
+  const toggle=document.getElementById("mobilePanelToggle");
+  const panel=document.querySelector(".right");
+  const backdrop=document.getElementById("mobilePanelBackdrop");
+  if(!toggle || !panel) return;
+
+  function isMobile(){ return window.matchMedia("(max-width:800px), (pointer:coarse) and (hover:none)").matches; }
+
+  function setPanel(open){
+    if(!isMobile()){
+      panel.classList.remove("mobile-drawer-open");
+      document.body.classList.remove("mobile-panel-open");
+      toggle.classList.remove("open");
+      toggle.setAttribute("aria-expanded","false");
+      toggle.textContent="MENÜÜ";
+      return;
+    }
+    panel.classList.toggle("mobile-drawer-open",open);
+    document.body.classList.toggle("mobile-panel-open",open);
+    toggle.classList.toggle("open",open);
+    toggle.setAttribute("aria-expanded",open?"true":"false");
+    toggle.textContent=open?"X":"MENÜÜ";
+  }
+
+  toggle.addEventListener("click",function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    setPanel(!panel.classList.contains("mobile-drawer-open"));
+  });
+
+  backdrop.addEventListener("pointerdown",function(){
+    setPanel(false);
+  });
+
+  /* Do not alter block handlers. Just close the drawer after a block is chosen. */
+  panel.addEventListener("click",function(e){
+    const block=e.target.closest(".block");
+    if(block && isMobile()){
+      setTimeout(function(){setPanel(false);},80);
+    }
+  });
+
+  window.addEventListener("resize",function(){
+    if(!isMobile()) setPanel(false);
+  });
+
+  setPanel(false);
+})();
+</script>
+<script>
+/* MAXCAD mobile controller: hidden by default, opened by the small green button. */
+(function(){
+  const root=document.getElementById('mobileBlockJoystick');
+  const toggle=document.getElementById('mobileJoystickToggle');
+  const rot=document.getElementById('mobileRotatePad');
+  const knob=document.getElementById('mobileRotateKnob');
+  if(!root||!toggle||!rot||!knob)return;
+
+  const mobile=()=>window.matchMedia('(max-width:800px), (pointer:coarse) and (hover:none)').matches;
+  function setOpen(open){
+    if(!mobile()) open=false;
+    root.classList.toggle('show',open);
+    toggle.classList.toggle('open',open);
+    toggle.setAttribute('aria-expanded',open?'true':'false');
+  }
+  toggle.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();setOpen(!root.classList.contains('show'));});
+
+  let moveId=null, moveX=0, moveY=0, moveRaf=0, last=0;
+  function joystickMove(dx,dy,dt){
+    return typeof window.maxcadJoystickMove==="function"
+      ? window.maxcadJoystickMove(dx,dy,dt) : false;
+  }
+  function moveTick(t){
+    if(moveId===null){moveRaf=0;return;}
+    if(!last)last=t;
+    const dt=Math.min(.04,(t-last)/1000);
+    last=t;
+    joystickMove(moveX,moveY,dt);
+    moveRaf=requestAnimationFrame(moveTick);
+  }
+  function stopMove(){
+    moveId=null;moveX=0;moveY=0;last=0;
+    if(moveRaf){cancelAnimationFrame(moveRaf);moveRaf=0;}
+  }
+  document.querySelectorAll('#mobileDpad button').forEach(btn=>{
+    btn.addEventListener('pointerdown',e=>{
+      e.preventDefault();e.stopPropagation();
+      if(typeof window.maxcadJoystickHasSelection==="function" &&
+         !window.maxcadJoystickHasSelection()) return;
+      const d=btn.dataset.dir;
+      moveX=d==='left'?-1:d==='right'?1:0;
+      moveY=d==='up'?1:d==='down'?-1:0;
+      moveId=e.pointerId;last=0;
+      try{btn.setPointerCapture(e.pointerId);}catch(_){}
+      joystickMove(moveX,moveY,.03);
+      if(!moveRaf)moveRaf=requestAnimationFrame(moveTick);
+    },{passive:false});
+    btn.addEventListener('pointerup',e=>{if(moveId===e.pointerId)stopMove();});
+    btn.addEventListener('pointercancel',e=>{if(moveId===e.pointerId)stopMove();});
+  });
+
+  let rotId=null;
+  function setRotation(clientX,clientY){
+    if(typeof window.maxcadJoystickRotate==="function")
+      window.maxcadJoystickRotate(clientX,clientY);
+  }
+  rot.addEventListener('pointerdown',e=>{
+    if(typeof window.maxcadJoystickHasSelection==="function" &&
+       !window.maxcadJoystickHasSelection()) return;
+    e.preventDefault();e.stopPropagation();
+    rotId=e.pointerId;
+    try{rot.setPointerCapture(e.pointerId);}catch(_){}
+    setRotation(e.clientX,e.clientY);
+  },{passive:false});
+  rot.addEventListener('pointermove',e=>{
+    if(rotId!==e.pointerId)return;
+    e.preventDefault();e.stopPropagation();
+    setRotation(e.clientX,e.clientY);
+  },{passive:false});
+  ['pointerup','pointercancel'].forEach(ev=>rot.addEventListener(ev,e=>{
+    if(rotId===e.pointerId)rotId=null;
+  }));
+
+
+  // Controller is only a tool overlay. It never changes block placement rules.
+  window.addEventListener('resize',()=>{if(!mobile())setOpen(false);});
+  setOpen(false);
+})();
+</script>
+</body>
+</html>
