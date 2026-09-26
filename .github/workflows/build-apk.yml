@@ -40,16 +40,15 @@ jobs:
       - name: Build MAXCAD APK
         run: gradle :app:assembleDebug --no-daemon
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MAXCAD-APK
-          path: app/build/outputs/apk/debug/app-debug.ap
-          if-no-files-found: error
+      - name: Find APK
+        run: |
+          echo "Searching for APK files..."
+          find . -type f -name "*.apk" -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: MAXCAD-APK
-          path: app/build/**/*.apk
+          path: |
+            **/build/outputs/apk/**/*.apk
           if-no-files-found: error
